@@ -251,7 +251,7 @@ export default function TestPage() {
                     {result.error && (
                       <p className="text-xs text-[var(--vela-red)] mt-1 font-mono">{result.error}</p>
                     )}
-                    {result.data && (
+                    {result.data != null && (
                       <pre className="text-xs text-[var(--text-muted)] mt-2 font-mono overflow-x-auto whitespace-pre-wrap break-all">
                         {JSON.stringify(result.data, null, 2)}
                       </pre>
