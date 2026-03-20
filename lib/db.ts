@@ -1,0 +1,160 @@
+import { sql } from "@vercel/postgres";
+
+// Initialize database tables
+export async function initDb() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS decisions (
+      id SERIAL PRIMARY KEY,
+      created_at TIMESTAMP DEFAULT NOW(),
+      action TEXT NOT NULL,
+      pair TEXT,
+      amount_usd DECIMAL,
+      entry_price DECIMAL,
+      quote_price_impact DECIMAL,
+      reasoning TEXT,
+      tx_hash TEXT,
+      x402_cost DECIMAL DEFAULT 0.001,
+      outcome TEXT DEFAULT 'open'
+    )
+  `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS snapshots (
+      id SERIAL PRIMARY KEY,
+      created_at TIMESTAMP DEFAULT NOW(),
+      total_value_usd DECIMAL,
+      usdc_balance DECIMAL,
+      eth_balance DECIMAL,
+      strk_balance DECIMAL,
+      vesu_deposited DECIMAL,
+      x402_spent_total DECIMAL,
+      pnl_usd DECIMAL,
+      pnl_pct DECIMAL
+    )
+  `;
+}
+
+// Decision CRUD
+export interface Decision {
+  id: number;
+  created_at: Date;
+  action: string;
+  pair: string | null;
+  amount_usd: number | null;
+  entry_price: number | null;
+  quote_price_impact: number | null;
+  reasoning: string | null;
+  tx_hash: string | null;
+  x402_cost: number;
+  outcome: string;
+}
+
+export async function logDecision(decision: {
+  action: string;
+  pair?: string;
+  amount_usd?: number;
+  entry_price?: number;
+  quote_price_impact?: number;
+  reasoning: string;
+  tx_hash?: string;
+}) {
+  const result = await sql`
+    INSERT INTO decisions (action, pair, amount_usd, entry_price, quote_price_impact, reasoning, tx_hash)
+    VALUES (${decision.action}, ${decision.pair ?? null}, ${decision.amount_usd ?? null},
+            ${decision.entry_price ?? null}, ${decision.quote_price_impact ?? null},
+            ${decision.reasoning}, ${decision.tx_hash ?? null})
+    RETURNING *
+  `;
+  return result.rows[0] as Decision;
+}
+
+export async function getRecentDecisions(limit = 20): Promise<Decision[]> {
+  const result = await sql`
+    SELECT * FROM decisions ORDER BY created_at DESC LIMIT ${limit}
+  `;
+  return result.rows as Decision[];
+}
+
+export async function markOutcome(id: number, outcome: "profit" | "loss") {
+  await sql`UPDATE decisions SET outcome = ${outcome} WHERE id = ${id}`;
+}
+
+export async function getOpenSwapDecisions(): Promise<Decision[]> {
+  const result = await sql`
+    SELECT * FROM decisions WHERE outcome = 'open' AND action = 'swap' ORDER BY created_at DESC
+  `;
+  return result.rows as Decision[];
+}
+
+// Snapshot CRUD
+export interface Snapshot {
+  id: number;
+  created_at: Date;
+  total_value_usd: number;
+  usdc_balance: number;
+  eth_balance: number;
+  strk_balance: number;
+  vesu_deposited: number;
+  x402_spent_total: number;
+  pnl_usd: number;
+  pnl_pct: number;
+}
+
+export async function logSnapshot(snapshot: {
+  total_value_usd: number;
+  usdc_balance: number;
+  eth_balance: number;
+  strk_balance: number;
+  vesu_deposited: number;
+  x402_spent_total: number;
+  pnl_usd: number;
+  pnl_pct: number;
+}) {
+  const result = await sql`
+    INSERT INTO snapshots (total_value_usd, usdc_balance, eth_balance, strk_balance,
+                          vesu_deposited, x402_spent_total, pnl_usd, pnl_pct)
+    VALUES (${snapshot.total_value_usd}, ${snapshot.usdc_balance}, ${snapshot.eth_balance},
+            ${snapshot.strk_balance}, ${snapshot.vesu_deposited}, ${snapshot.x402_spent_total},
+            ${snapshot.pnl_usd}, ${snapshot.pnl_pct})
+    RETURNING *
+  `;
+  return result.rows[0] as Snapshot;
+}
+
+export async function getSnapshots(limit = 100): Promise<Snapshot[]> {
+  const result = await sql`
+    SELECT * FROM snapshots ORDER BY created_at ASC LIMIT ${limit}
+  `;
+  return result.rows as Snapshot[];
+}
+
+export async function getLatestSnapshot(): Promise<Snapshot | null> {
+  const result = await sql`
+    SELECT * FROM snapshots ORDER BY created_at DESC LIMIT 1
+  `;
+  return (result.rows[0] as Snapshot) ?? null;
+}
+
+// Stats
+export async function getTradeStats() {
+  const result = await sql`
+    SELECT
+      COUNT(*) FILTER (WHERE action = 'swap') as total_trades,
+      COUNT(*) FILTER (WHERE action = 'swap' AND outcome = 'profit') as winning_trades,
+      COUNT(*) FILTER (WHERE action = 'swap' AND outcome = 'loss') as losing_trades,
+      COUNT(*) as total_decisions,
+      SUM(x402_cost) as total_x402_spent
+    FROM decisions
+  `;
+  const row = result.rows[0];
+  return {
+    totalTrades: Number(row.total_trades),
+    winningTrades: Number(row.winning_trades),
+    losingTrades: Number(row.losing_trades),
+    totalDecisions: Number(row.total_decisions),
+    totalX402Spent: Number(row.total_x402_spent),
+    winRate: Number(row.total_trades) > 0
+      ? (Number(row.winning_trades) / Number(row.total_trades)) * 100
+      : 0,
+  };
+}
