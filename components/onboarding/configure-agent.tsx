@@ -1,41 +1,78 @@
 "use client";
 
 import { useState } from "react";
+import { useChipiSession } from "@chipi-stack/nextjs";
 import { motion } from "framer-motion";
 
 type Strategy = "conservative" | "balanced" | "aggressive";
 
 interface ConfigureAgentProps {
+  wallet: { publicKey: string; walletType?: string };
+  pin: string;
   balance: number;
   onHired: (config: { strategy: Strategy; maxPerTrade: number; maxPerDay: number; duration: number }) => void;
 }
 
 const strategies: { key: Strategy; label: string; description: string }[] = [
-  { key: "conservative", label: "Conservative", description: "Yield only — supply to Vesu, no trading" },
+  { key: "conservative", label: "Conservative", description: "Yield only -- supply to Vesu, no trading" },
   { key: "balanced", label: "Balanced", description: "Yield + small trades when profitable" },
   { key: "aggressive", label: "Aggressive", description: "Active trading + yield optimization" },
 ];
 
-export function ConfigureAgent({ balance, onHired }: ConfigureAgentProps) {
+export function ConfigureAgent({ wallet, pin, balance, onHired }: ConfigureAgentProps) {
   const [strategy, setStrategy] = useState<Strategy>("balanced");
   const [maxPerTrade, setMaxPerTrade] = useState(Math.min(5, balance / 2));
   const [maxPerDay, setMaxPerDay] = useState(Math.min(10, balance));
   const [duration, setDuration] = useState(7);
-  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
+  const {
+    createSession,
+    registerSession,
+    isCreating,
+    isRegistering,
+  } = useChipiSession({
+    wallet: wallet as Parameters<typeof useChipiSession>[0]["wallet"],
+    encryptKey: pin,
+    getBearerToken: async () => process.env.NEXT_PUBLIC_CHIPI_API_KEY!,
+    defaultDurationSeconds: duration * 86400,
+    defaultMaxCalls: 500,
+  });
+
+  const loading = isCreating || isRegistering;
   const weeklyX402Cost = (48 * duration * 0.001).toFixed(2);
 
   const handleHire = async () => {
-    setLoading(true);
+    setError(null);
     try {
-      // In production:
-      // 1. createSession({ durationSeconds: duration * 86400 })
-      // 2. registerSession({ maxCalls: 500, allowedEntrypoints: [...] })
-      // 3. setSpendingPolicy({ maxPerCall, maxPerWindow, windowSeconds: 86400 })
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Step 1: Create session locally
+      setStatus("Creating session key...");
+      const session = await createSession({
+        encryptKey: pin,
+        durationSeconds: duration * 86400,
+      });
+
+      // Step 2: Register session on-chain
+      setStatus("Registering on-chain (gasless)...");
+      await registerSession({
+        sessionPublicKey: session.publicKey,
+        validUntil: session.validUntil,
+        maxCalls: 500,
+        allowedEntrypoints: [
+          "transfer",
+          "approve",
+          "deposit",
+          "withdraw",
+          "redeem",
+        ],
+      });
+
+      setStatus("Agent hired!");
       onHired({ strategy, maxPerTrade, maxPerDay, duration });
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to set up session");
+      setStatus("");
     }
   };
 
@@ -81,9 +118,7 @@ export function ConfigureAgent({ balance, onHired }: ConfigureAgentProps) {
 
       {/* Duration */}
       <div className="mb-6">
-        <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">
-          Duration
-        </label>
+        <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">Duration</label>
         <select
           value={duration}
           onChange={(e) => setDuration(Number(e.target.value))}
@@ -100,9 +135,7 @@ export function ConfigureAgent({ balance, onHired }: ConfigureAgentProps) {
       {/* Spending caps */}
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div>
-          <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">
-            Max per trade ($)
-          </label>
+          <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">Max per trade ($)</label>
           <input
             type="number"
             value={maxPerTrade}
@@ -114,9 +147,7 @@ export function ConfigureAgent({ balance, onHired }: ConfigureAgentProps) {
           />
         </div>
         <div>
-          <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">
-            Max per day ($)
-          </label>
+          <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">Max per day ($)</label>
           <input
             type="number"
             value={maxPerDay}
@@ -144,14 +175,25 @@ export function ConfigureAgent({ balance, onHired }: ConfigureAgentProps) {
         </p>
       </div>
 
+      {/* Status */}
+      {status && (
+        <p className="text-sm text-[var(--vela-blue)] text-center mb-4">{status}</p>
+      )}
+
       {/* Hire button */}
       <button
         onClick={handleHire}
         disabled={loading}
         className="w-full py-4 rounded-xl bg-[var(--vela-blue)] text-[var(--bg-primary)] font-semibold text-lg hover:brightness-110 transition-all disabled:opacity-50"
       >
-        {loading ? "Setting up session..." : "Hire Agent"}
+        {isCreating
+          ? "Creating session..."
+          : isRegistering
+            ? "Registering on-chain..."
+            : "Hire Agent"}
       </button>
+
+      {error && <p className="mt-3 text-sm text-[var(--vela-red)] text-center">{error}</p>}
     </motion.div>
   );
 }

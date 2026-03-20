@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 
 interface FundWalletProps {
@@ -19,11 +19,9 @@ export function FundWallet({ walletAddress, onFunded }: FundWalletProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const checkBalance = async () => {
+  const checkBalance = useCallback(async () => {
     setPolling(true);
     try {
-      // In production: getTokenBalance(USDC_ADDRESS, walletAddress)
-      // For demo, simulate balance check
       const res = await fetch(`/api/agent/status?wallet=${walletAddress}`);
       if (res.ok) {
         const data = await res.json();
@@ -38,15 +36,16 @@ export function FundWallet({ walletAddress, onFunded }: FundWalletProps) {
     } finally {
       setPolling(false);
     }
-  };
+  }, [walletAddress, onFunded]);
 
-  // Poll every 10 seconds
+  // Poll every 15 seconds
   useEffect(() => {
-    const interval = setInterval(checkBalance, 10000);
+    checkBalance();
+    const interval = setInterval(checkBalance, 15000);
     return () => clearInterval(interval);
-  });
+  }, [checkBalance]);
 
-  const shortAddress = `${walletAddress.slice(0, 8)}...${walletAddress.slice(-6)}`;
+  const shortAddress = `${walletAddress.slice(0, 10)}...${walletAddress.slice(-6)}`;
 
   return (
     <motion.div
@@ -54,18 +53,18 @@ export function FundWallet({ walletAddress, onFunded }: FundWalletProps) {
       animate={{ opacity: 1, y: 0 }}
       className="glass p-8 max-w-md mx-auto text-center"
     >
-      <h2 className="text-2xl font-bold mb-4">Fund Your Wallet</h2>
+      <h2 className="text-2xl font-bold mb-2">Fund Your Wallet</h2>
       <p className="text-sm text-[var(--text-secondary)] mb-6">
-        Send USDC to your wallet to get started. Minimum $10 USDC.
+        Send at least $10 USDC (Starknet) to your wallet address.
       </p>
 
       <div className="glass p-4 mb-4">
-        <p className="text-xs text-[var(--text-muted)] mb-1">Your address</p>
+        <p className="text-xs text-[var(--text-muted)] mb-2">Your Starknet address</p>
         <div className="flex items-center justify-center gap-2">
-          <code className="font-mono text-sm">{shortAddress}</code>
+          <code className="font-mono text-sm break-all">{shortAddress}</code>
           <button
             onClick={copyAddress}
-            className="text-xs text-[var(--vela-blue)] hover:underline"
+            className="text-xs text-[var(--vela-blue)] hover:underline shrink-0"
           >
             {copied ? "Copied!" : "Copy"}
           </button>
@@ -80,7 +79,10 @@ export function FundWallet({ walletAddress, onFunded }: FundWalletProps) {
           </span>
         </p>
         {balance >= 10 && (
-          <p className="text-sm text-[var(--vela-green)] mt-1">Balance detected!</p>
+          <p className="text-sm text-[var(--vela-green)] mt-1">Balance detected! Continuing...</p>
+        )}
+        {balance > 0 && balance < 10 && (
+          <p className="text-xs text-[var(--vela-gold)] mt-1">Minimum $10 needed. Send more USDC.</p>
         )}
       </div>
 
