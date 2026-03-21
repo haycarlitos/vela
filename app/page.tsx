@@ -9,8 +9,8 @@ import { ThemeToggle } from "@/components/theme-toggle";
 
 const features = [
   {
-    title: "Session Keys",
-    description: "On-chain spending caps. Your agent can only do what you allow.",
+    title: "You Stay in Control",
+    description: "Set exactly how much your agent can spend. It only acts within your rules, never more.",
     icon: (
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
@@ -20,8 +20,8 @@ const features = [
     ),
   },
   {
-    title: "Gasless Execution",
-    description: "Paymaster-sponsored transactions. Zero gas fees, ever.",
+    title: "No Hidden Fees",
+    description: "Your agent runs for free. No gas costs, no platform fees, no surprises.",
     icon: (
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
@@ -29,8 +29,8 @@ const features = [
     ),
   },
   {
-    title: "Pay-Per-Think",
-    description: "$0.001 per decision via x402 micropayments. The agent pays for its own brain.",
+    title: "Pennies per Decision",
+    description: "Your agent thinks for $0.001 per decision. Smarter than a fund manager, cheaper than a coffee.",
     icon: (
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16z" />
@@ -43,8 +43,8 @@ const features = [
     ),
   },
   {
-    title: "DeFi on Autopilot",
-    description: "AVNU swaps, Vesu yields, automatic rebalancing — 24/7.",
+    title: "Works While You Sleep",
+    description: "Your money earns yield, catches dips, and rebalances automatically. 24 hours a day, 7 days a week.",
     icon: (
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
@@ -55,19 +55,19 @@ const features = [
 ];
 
 const steps = [
-  { step: "1", title: "Create Wallet", description: "Passkey-protected Starknet wallet in seconds" },
-  { step: "2", title: "Fund with USDC", description: "Send $10+ USDC to get started" },
-  { step: "3", title: "Hire Your Agent", description: "Set spending caps, pick a strategy, confirm with PIN" },
-  { step: "4", title: "Watch It Work", description: "Real-time dashboard with every decision explained" },
+  { step: "1", title: "Create Your Wallet", description: "No seed phrases, no extensions. Just your fingerprint." },
+  { step: "2", title: "Add $10 to Start", description: "Send USDC and your agent is ready to go." },
+  { step: "3", title: "Choose Your Style", description: "Conservative, balanced, or aggressive. You decide." },
+  { step: "4", title: "Watch Your Money Grow", description: "Live dashboard shows every decision and why it was made." },
 ];
 
 const demoEntries = [
-  { time: "14:30", action: "HOLD", detail: "No opportunity — ETH flat, spreads wide", type: "hold" },
-  { time: "14:00", action: "SWAP", detail: "USDC\u2192ETH $2.00 — ETH down 6.2%, mean reversion", type: "profit" },
-  { time: "13:30", action: "HOLD", detail: "Price impact 1.8% on small amount — not worth it", type: "hold" },
-  { time: "13:00", action: "SUPPLY", detail: "USDC\u2192Vesu $3.00 — APY 6.2%, idle capital working", type: "supply" },
-  { time: "12:30", action: "SWAP", detail: "USDC\u2192STRK $0.66 — initial diversification", type: "profit" },
-  { time: "12:00", action: "HOLD", detail: "First cycle — gathering market data", type: "hold" },
+  { time: "14:30", action: "HOLD", detail: "Market is quiet, protecting your balance", type: "hold" },
+  { time: "14:00", action: "SWAP", detail: "Bought ETH at a 6% dip, good entry point", type: "profit" },
+  { time: "13:30", action: "HOLD", detail: "Trade fees too high right now, waiting", type: "hold" },
+  { time: "13:00", action: "SUPPLY", detail: "Put $3 to work earning 6.2% annual yield", type: "supply" },
+  { time: "12:30", action: "SWAP", detail: "Diversified into STRK at a good price", type: "profit" },
+  { time: "12:00", action: "HOLD", detail: "Analyzing the market, gathering data", type: "hold" },
 ];
 
 const springEntrance = {
@@ -83,7 +83,7 @@ function HowItWorksSection() {
   return (
     <section id="how-it-works" className="px-6 py-16 max-w-3xl mx-auto w-full" ref={ref}>
       <motion.h2
-        className="text-3xl font-bold text-center mb-12 gradient-text"
+        className="text-3xl font-bold text-center mb-12 shimmer-text"
         initial={{ opacity: 0, y: 20 }}
         animate={isInView ? { opacity: 1, y: 0 } : {}}
         transition={springEntrance}
@@ -95,7 +95,7 @@ function HowItWorksSection() {
         <motion.div
           className="absolute left-[27px] top-5 bottom-5 w-px hidden sm:block"
           style={{
-            background: "linear-gradient(180deg, var(--vela-blue), transparent)",
+            background: "linear-gradient(180deg, #2BC2AE, transparent)",
           }}
           initial={{ scaleY: 0 }}
           animate={isInView ? { scaleY: 1 } : {}}
@@ -110,9 +110,7 @@ function HowItWorksSection() {
             transition={{ ...springEntrance, delay: 0.1 * i }}
             className="glass glass-interactive p-5 flex items-start gap-5"
           >
-            <div
-              className="w-10 h-10 rounded-full bg-[var(--vela-blue)] text-[var(--bg-primary)] flex items-center justify-center font-bold text-lg shrink-0"
-            >
+            <div className="w-10 h-10 rounded-full bg-[var(--vela-blue)] text-[var(--bg-primary)] flex items-center justify-center font-bold text-lg shrink-0">
               {s.step}
             </div>
             <div>
@@ -133,12 +131,12 @@ function DemoSection() {
   return (
     <section className="px-6 py-16 max-w-4xl mx-auto w-full" ref={ref}>
       <motion.h2
-        className="text-3xl font-bold text-center mb-4 gradient-text"
+        className="text-3xl font-bold text-center mb-4 shimmer-text"
         initial={{ opacity: 0, y: 20 }}
         animate={isInView ? { opacity: 1, y: 0 } : {}}
         transition={springEntrance}
       >
-        What Your Agent Does
+        Your Agent in Action
       </motion.h2>
       <motion.p
         className="text-center text-[var(--text-secondary)] mb-10 max-w-xl mx-auto"
@@ -146,7 +144,7 @@ function DemoSection() {
         animate={isInView ? { opacity: 1 } : {}}
         transition={{ delay: 0.1 }}
       >
-        Every 30 minutes, your agent scans the market and makes autonomous decisions. Here&apos;s what a typical day looks like:
+        Every 30 minutes, your agent checks the market and decides the best move. Here&apos;s a typical afternoon:
       </motion.p>
       <div className="space-y-3 font-mono text-sm">
         {demoEntries.map((entry, i) => (
@@ -193,7 +191,7 @@ export default function Home() {
       <nav className="flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-2">
           <Image src="/velalogo-clean.png" alt="Vela" width={28} height={28} />
-          <span className="text-lg font-bold gradient-text">Vela</span>
+          <span className="text-lg font-bold shimmer-text">Vela</span>
         </div>
         <ThemeToggle />
       </nav>
@@ -226,8 +224,8 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ ...springEntrance, delay: 0.2 }}
           >
-            Hire an autonomous DeFi agent that trades, earns yield, and rebalances your portfolio
-            while you sleep. Powered by session keys, gasless execution, and x402 micropayments.
+            Your personal AI agent that grows your money while you sleep.
+            Start with $10 and let it trade, earn yield, and protect your portfolio around the clock.
           </motion.p>
         </motion.div>
 
@@ -263,9 +261,9 @@ export default function Home() {
           />
           <defs>
             <linearGradient id="wave-gradient" x1="0" y1="0" x2="1440" y2="0" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor="var(--vela-blue)" stopOpacity="0" />
-              <stop offset="50%" stopColor="var(--vela-blue)" stopOpacity="0.5" />
-              <stop offset="100%" stopColor="var(--vela-blue)" stopOpacity="0" />
+              <stop offset="0%" stopColor="#2BC2AE" stopOpacity="0" />
+              <stop offset="50%" stopColor="#44E1B4" stopOpacity="0.5" />
+              <stop offset="100%" stopColor="#2BC2AE" stopOpacity="0" />
             </linearGradient>
           </defs>
         </svg>
@@ -311,9 +309,9 @@ export default function Home() {
           />
           <defs>
             <linearGradient id="wave-gradient-2" x1="0" y1="0" x2="1440" y2="0" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor="var(--vela-blue)" stopOpacity="0" />
-              <stop offset="50%" stopColor="var(--caustic-teal)" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="var(--vela-blue)" stopOpacity="0" />
+              <stop offset="0%" stopColor="#2BC2AE" stopOpacity="0" />
+              <stop offset="50%" stopColor="#44E1B4" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#2BC2AE" stopOpacity="0" />
             </linearGradient>
           </defs>
         </svg>
@@ -328,7 +326,7 @@ export default function Home() {
       {/* CTA */}
       <section className="px-6 py-20 text-center relative">
         <motion.h2
-          className="text-3xl font-bold mb-4"
+          className="text-3xl font-bold mb-4 shimmer-text"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
@@ -336,19 +334,19 @@ export default function Home() {
           Ready to set sail?
         </motion.h2>
         <p className="text-[var(--text-secondary)] mb-8 max-w-md mx-auto">
-          Start with $10 USDC. Your agent will trade, earn yield, and report back — all while you sleep.
+          Start with just $10. Your agent does the rest.
         </p>
         <Link
           href="/dashboard"
           className="glass-liquid inline-block px-10 py-4 rounded-full font-medium text-lg text-[var(--text-primary)] hover:brightness-110 transition-all duration-300"
         >
-          Try Demo
+          Get Started
         </Link>
       </section>
 
       {/* Footer */}
       <footer className="px-6 py-8 text-center text-xs text-[var(--text-muted)] border-t border-[var(--glass-border)]">
-        <p>Powered by <span className="text-[var(--text-secondary)]">Chipi Pay</span> — Session keys, gasless execution, x402 micropayments on Starknet</p>
+        <p>Powered by <span className="text-[var(--text-secondary)]">Chipi Pay</span></p>
       </footer>
     </div>
   );
