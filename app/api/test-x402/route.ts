@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
         asset: USDC_ASSET,
         payTo: MERCHANT_WALLET,
         maxTimeoutSeconds: 300,
-        description: "x402 test payment — $0.001 USDC",
+        description: "x402 test payment - $0.001 USDC",
       };
 
       return new Response(

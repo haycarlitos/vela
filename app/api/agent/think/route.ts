@@ -12,7 +12,7 @@ export const POST = withX402Payment(
   {
     amount: X402_THINK_COST,
     recipient: MERCHANT_WALLET,
-    description: "Vela agent decision — AI-powered DeFi analysis",
+    description: "Vela agent decision - AI-powered DeFi analysis",
   },
   async (req: NextRequest) => {
     const body = await req.json();
