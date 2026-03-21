@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { AgentStatus } from "@/components/dashboard/agent-status";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
@@ -143,8 +144,9 @@ export default function DashboardPage() {
           borderBottom: "1px solid var(--liquid-border)",
         }}
       >
-        <Link href="/" className="text-xl font-bold shimmer-text">
-          Vela
+        <Link href="/" className="flex items-center gap-2">
+          <Image src="/velalogo-clean.png" alt="Vela" width={24} height={24} />
+          <span className="text-xl font-bold shimmer-text">Vela</span>
         </Link>
         <div className="flex items-center gap-4">
           {isDemo && (

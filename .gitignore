@@ -41,8 +41,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# original video files (heavy, keep compressed .webm only)
-public/*.mp4
-public/*.png
-!public/caustics-*.webm
+# original video source files (heavy)
+public/vela-*.mp4
+public/dark-mode.png
+public/light-mode.png
 PROMPTS_FOR_FLOW.md

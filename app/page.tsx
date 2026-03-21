@@ -2,6 +2,7 @@
 
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { OceanBackground } from "@/components/ocean-background";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -190,7 +191,10 @@ export default function Home() {
 
       {/* Nav */}
       <nav className="flex items-center justify-between px-6 py-4">
-        <span className="text-lg font-bold gradient-text">Vela</span>
+        <div className="flex items-center gap-2">
+          <Image src="/velalogo-clean.png" alt="Vela" width={28} height={28} />
+          <span className="text-lg font-bold gradient-text">Vela</span>
+        </div>
         <ThemeToggle />
       </nav>
 
@@ -202,9 +206,12 @@ export default function Home() {
           transition={springEntrance}
           className="relative z-10"
         >
-          <h1 className="text-5xl sm:text-7xl font-bold tracking-tight mb-4">
-            <span className="gradient-text">Vela</span>
-          </h1>
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <Image src="/velalogo-clean.png" alt="Vela" width={72} height={72} className="sm:w-24 sm:h-24" />
+            <h1 className="text-5xl sm:text-7xl font-bold tracking-tight gradient-text">
+              Vela
+            </h1>
+          </div>
           <motion.p
             className="text-xl sm:text-2xl text-[var(--text-primary)] mb-2 font-light"
             initial={{ opacity: 0, y: 10 }}
