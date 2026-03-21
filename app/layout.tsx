@@ -5,7 +5,10 @@ import { Providers } from "./providers";
 export const metadata: Metadata = {
   title: "Vela — Set sail. Let AI navigate.",
   description: "Autonomous DeFi agent powered by Chipi Pay. Hire an AI to manage your portfolio while you sleep.",
-  icons: { icon: "/favicon.ico" },
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({
