@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { ChipiProvider } from "@chipi-stack/nextjs";
+import { ChipiClientProvider } from "@chipi-stack/nextjs";
 
 export function Providers({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
@@ -15,5 +15,9 @@ export function Providers({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
-  return <ChipiProvider>{children}</ChipiProvider>;
+  return (
+    <ChipiClientProvider apiPublicKey={process.env.NEXT_PUBLIC_CHIPI_API_KEY!}>
+      {children}
+    </ChipiClientProvider>
+  );
 }
