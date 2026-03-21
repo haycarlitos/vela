@@ -17,8 +17,8 @@ const tiers = [
   {
     name: "Sailor",
     price: "Free",
-    one: "Your money earns interest. Automatically.",
-    features: ["Earns 3-7% on your USDC", "Moves to the best rate", "Real-time, always on"],
+    one: "Your money earns interest.",
+    features: ["Automatic yield on USDC", "Always picks the best rate", "Zero effort"],
     cta: "Start Free",
     highlight: false,
     color: "var(--vela-blue)",
@@ -27,8 +27,8 @@ const tiers = [
     name: "Navigator",
     price: "$1",
     period: "/mo",
-    one: "Buys the dip. Sells the rally. No emotions.",
-    features: ["Trades ETH, STRK, wBTC", "Reacts in seconds, not hours", "Up to 5 trades/day"],
+    one: "A robot that trades for you.",
+    features: ["Buys dips, sells rallies", "Reacts in seconds", "Up to 5 trades/day"],
     cta: "Start for $1",
     highlight: false,
     color: "var(--vela-green)",
@@ -37,8 +37,8 @@ const tiers = [
     name: "Captain",
     price: "$3",
     period: "/mo",
-    one: "AI reads news, learns from mistakes, protects you.",
-    features: ["AI judgment on every trade", "Sells if things crash", "Locks gains automatically", "Ask AI: \"How am I doing?\""],
+    one: "AI that thinks before trading.",
+    features: ["Reads news and sentiment", "Protects you when things drop", "Ask: \"How am I doing?\""],
     cta: "Start for $3",
     highlight: true,
     color: "#44E1B4",
@@ -47,8 +47,8 @@ const tiers = [
     name: "Pirate",
     price: "$5",
     period: "/mo",
-    one: "You write the strategy. Vela executes it.",
-    features: ["Set your own rules", "Your strategy on the leaderboard", "Unlimited AI advice", "All protocols, fastest speed"],
+    one: "You set the rules.",
+    features: ["Custom strategy", "Compete on the leaderboard", "Unlimited AI advice"],
     cta: "Start for $5",
     highlight: false,
     color: "var(--vela-gold)",
@@ -108,7 +108,7 @@ function TierSection() {
             initial={{ opacity: 0, y: 30 }}
             animate={isInView ? { opacity: 1, y: 0 } : {}}
             transition={{ ...spring, delay: 0.08 * i }}
-            className={`${tier.highlight ? "glass-liquid" : "glass"} glass-interactive p-6 flex flex-col relative`}
+            className={`glass glass-interactive p-6 flex flex-col relative ${tier.highlight ? "border border-[#2BC2AE]/40" : ""}`}
           >
             {tier.highlight && (
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#44E1B4] to-[#2BC2AE] text-[var(--ocean-deep)] text-xs font-bold px-3 py-1 rounded-full">
