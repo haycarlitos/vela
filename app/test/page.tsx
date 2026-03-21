@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
+
+const X402PaySection = dynamic(() => import("./x402-pay-wrapper"), { ssr: false });
 
 type TestResult = {
   step: string;
@@ -20,7 +23,7 @@ export default function TestPage() {
 
   const clearResults = () => setResults([]);
 
-  // Test 1: Call /api/agent/think WITHOUT payment → should get 402
+  // Test 1: x402 402 response
   const testX402Response = async () => {
     setLoading(true);
     clearResults();
@@ -47,7 +50,6 @@ export default function TestPage() {
           },
         });
 
-        // Parse and display details
         const requirement = paymentHeader ? JSON.parse(paymentHeader) : body.x402;
         addResult({
           step: "Payment details",
@@ -80,7 +82,7 @@ export default function TestPage() {
     setLoading(false);
   };
 
-  // Test 2: Check facilitator health
+  // Test 2: Facilitator health
   const testFacilitator = async () => {
     setLoading(true);
     clearResults();
@@ -99,37 +101,6 @@ export default function TestPage() {
     } catch (err) {
       addResult({
         step: "Facilitator unreachable",
-        status: "error",
-        error: err instanceof Error ? err.message : String(err),
-      });
-    }
-
-    setLoading(false);
-  };
-
-  // Test 3: Simple API test (non-402 endpoint)
-  const testApiHealth = async () => {
-    setLoading(true);
-    clearResults();
-
-    addResult({ step: "Checking /api/agent/status...", status: "pending" });
-
-    try {
-      const res = await fetch("/api/agent/status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ walletAddress: "0x0000000000000000000000000000000000000001" }),
-      });
-
-      const body = await res.json();
-      addResult({
-        step: `Status API responded: ${res.status}`,
-        status: res.ok ? "success" : "info",
-        data: body,
-      });
-    } catch (err) {
-      addResult({
-        step: "Status API failed",
         status: "error",
         error: err instanceof Error ? err.message : String(err),
       });
@@ -158,7 +129,6 @@ export default function TestPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Header */}
       <header className="flex items-center justify-between px-6 py-4 border-b border-[var(--glass-border)]">
         <Link href="/" className="text-xl font-bold gradient-text">
           Vela
@@ -166,14 +136,13 @@ export default function TestPage() {
         <span className="text-sm text-[var(--text-muted)] font-mono">x402 Test Console</span>
       </header>
 
-      {/* Content */}
       <main className="flex-1 px-4 py-8 max-w-2xl mx-auto w-full">
         <h1 className="text-2xl font-bold mb-2">x402 Protocol Test</h1>
         <p className="text-sm text-[var(--text-secondary)] mb-8">
-          Test x402 payment protocol on Starknet mainnet. Each test calls a real endpoint.
+          Test x402 payment protocol on Starknet mainnet. Real endpoints, real wallet signing.
         </p>
 
-        {/* Test Buttons */}
+        {/* Quick Tests */}
         <div className="space-y-3 mb-8">
           <button
             onClick={testX402Response}
@@ -182,7 +151,7 @@ export default function TestPage() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-semibold text-[var(--vela-blue)]">Test 1: x402 Payment Gate</h3>
+                <h3 className="font-semibold text-[var(--vela-blue)]">Test: x402 Payment Gate</h3>
                 <p className="text-xs text-[var(--text-muted)] mt-1">
                   POST /api/test-x402 without payment. Expects HTTP 402 + PaymentRequirement header.
                 </p>
@@ -198,35 +167,19 @@ export default function TestPage() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-semibold text-[var(--vela-blue)]">Test 2: Facilitator Health</h3>
+                <h3 className="font-semibold text-[var(--vela-blue)]">Test: Facilitator Health</h3>
                 <p className="text-xs text-[var(--text-muted)] mt-1">
-                  Check if x402.chipipay.com facilitator is alive and responding.
+                  Check x402.chipipay.com facilitator status.
                 </p>
               </div>
               <span className="text-2xl font-mono text-[var(--text-muted)]">GET</span>
             </div>
           </button>
-
-          <button
-            onClick={testApiHealth}
-            disabled={loading}
-            className="w-full glass p-4 text-left hover:scale-[1.01] transition-transform disabled:opacity-50"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold text-[var(--vela-blue)]">Test 3: Agent Status API</h3>
-                <p className="text-xs text-[var(--text-muted)] mt-1">
-                  Check portfolio status endpoint (not x402-protected).
-                </p>
-              </div>
-              <span className="text-2xl font-mono text-[var(--text-muted)]">POST</span>
-            </div>
-          </button>
         </div>
 
-        {/* Results */}
+        {/* Quick Test Results */}
         {results.length > 0 && (
-          <div className="space-y-2">
+          <div className="space-y-2 mb-8">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-[var(--text-secondary)]">Results</h2>
               <button
@@ -236,7 +189,6 @@ export default function TestPage() {
                 Clear
               </button>
             </div>
-
             {results.map((result, i) => (
               <div key={i} className="glass p-3" style={{ borderLeft: `3px solid ${statusColor(result.status)}` }}>
                 <div className="flex items-start gap-3">
@@ -263,6 +215,17 @@ export default function TestPage() {
           </div>
         )}
 
+        {/* Divider */}
+        <div className="border-t border-[var(--glass-border)] my-8" />
+
+        {/* Full Payment Test */}
+        <h2 className="text-xl font-bold mb-2">Full x402 Payment</h2>
+        <p className="text-sm text-[var(--text-secondary)] mb-6">
+          Connect your Chipi wallet, sign SNIP-12 typed data, and send a real $0.001 USDC payment via x402.
+        </p>
+
+        <X402PaySection />
+
         {/* Info Box */}
         <div className="glass p-4 mt-8">
           <h3 className="text-sm font-semibold text-[var(--text-secondary)] mb-2">How x402 works</h3>
@@ -275,7 +238,7 @@ export default function TestPage() {
             <li>Server verifies via facilitator, executes request, then settles payment on-chain</li>
           </ol>
           <p className="text-xs text-[var(--text-muted)] mt-3">
-            Cost per decision: <span className="text-[var(--vela-green)] font-mono">$0.001 USDC</span> |
+            Cost: <span className="text-[var(--vela-green)] font-mono">$0.001 USDC</span> |
             Facilitator: <span className="font-mono">x402.chipipay.com</span> |
             Network: <span className="font-mono">starknet-mainnet</span>
           </p>
