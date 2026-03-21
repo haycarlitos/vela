@@ -62,10 +62,10 @@ export default function Home() {
           className="flex flex-col sm:flex-row gap-4"
         >
           <Link
-            href="/onboarding"
+            href="/dashboard"
             className="px-8 py-3 rounded-full font-medium text-[var(--bg-primary)] bg-[var(--vela-blue)] hover:brightness-110 transition-all duration-300"
           >
-            Get Started
+            Try Demo
           </Link>
           <a
             href="#how-it-works"
@@ -168,10 +168,10 @@ export default function Home() {
           Start with $10 USDC. Your agent will trade, earn yield, and report back — all while you sleep.
         </p>
         <Link
-          href="/onboarding"
+          href="/dashboard"
           className="inline-block px-10 py-4 rounded-full font-medium text-lg text-[var(--bg-primary)] bg-[var(--vela-blue)] hover:brightness-110 transition-all duration-300"
         >
-          Hire Your Agent
+          Try Demo
         </Link>
       </section>
 
