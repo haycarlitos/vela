@@ -25,17 +25,17 @@ export default function TestPage() {
     setLoading(true);
     clearResults();
 
-    addResult({ step: "Calling POST /api/agent/think without X-PAYMENT header...", status: "pending" });
+    addResult({ step: "Calling POST /api/test-x402 without X-PAYMENT header...", status: "pending" });
 
     try {
-      const res = await fetch("/api/agent/think", {
+      const res = await fetch("/api/test-x402", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ walletAddress: "0x0000000000000000000000000000000000000001" }),
       });
 
       const paymentHeader = res.headers.get("PAYMENT-REQUIRED");
-      const body = await res.json();
+      const text = await res.text();
+      const body = text ? JSON.parse(text) : { error: `Empty response (status ${res.status})` };
 
       if (res.status === 402) {
         addResult({
@@ -184,7 +184,7 @@ export default function TestPage() {
               <div>
                 <h3 className="font-semibold text-[var(--vela-blue)]">Test 1: x402 Payment Gate</h3>
                 <p className="text-xs text-[var(--text-muted)] mt-1">
-                  POST /api/agent/think without payment. Expects HTTP 402 + PaymentRequirement header.
+                  POST /api/test-x402 without payment. Expects HTTP 402 + PaymentRequirement header.
                 </p>
               </div>
               <span className="text-2xl font-mono text-[var(--text-muted)]">402</span>
