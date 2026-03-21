@@ -7,48 +7,94 @@
   inherits: false;
 }
 
+/* ============================================
+   DARK MODE (default)
+   ============================================ */
+
 :root {
-  /* Deep ocean background */
   --bg-primary: #0A0E27;
   --bg-secondary: #111638;
-
-  /* Ocean depths */
   --ocean-deep: #060A1F;
   --ocean-surface: #121845;
   --ocean-glow: rgba(79, 195, 247, 0.08);
 
-  /* Liquid glass */
   --liquid-bg: rgba(255, 255, 255, 0.04);
   --liquid-border: rgba(255, 255, 255, 0.08);
   --liquid-highlight: rgba(255, 255, 255, 0.15);
   --liquid-refract: rgba(79, 195, 247, 0.06);
 
-  /* Caustic light */
   --caustic-blue: rgba(79, 195, 247, 0.12);
   --caustic-teal: rgba(0, 188, 212, 0.08);
-
-  /* Chromatic aberration */
   --chroma-red: rgba(239, 83, 80, 0.15);
   --chroma-blue: rgba(79, 195, 247, 0.15);
 
-  /* Glass (backwards compat) */
   --glass-bg: rgba(255, 255, 255, 0.06);
   --glass-border: rgba(255, 255, 255, 0.10);
   --glass-hover: rgba(255, 255, 255, 0.10);
 
-  /* Accent */
   --vela-blue: #4FC3F7;
   --vela-green: #66BB6A;
   --vela-red: #EF5350;
   --vela-gold: #FFD54F;
 
-  /* Text */
   --text-primary: #F0F0F5;
   --text-secondary: #8B8FA3;
   --text-muted: #5A5E73;
 
+  --shadow-card: rgba(0, 0, 0, 0.2);
+  --shadow-hover: rgba(0, 0, 0, 0.3);
+
   --background: var(--bg-primary);
   --foreground: var(--text-primary);
+
+  --video-opacity: 0.35;
+
+  color-scheme: dark;
+}
+
+/* ============================================
+   LIGHT MODE
+   ============================================ */
+
+[data-theme="light"] {
+  --bg-primary: #F0F4F8;
+  --bg-secondary: #E8ECF1;
+  --ocean-deep: #EAF2F8;
+  --ocean-surface: #D6E8F0;
+  --ocean-glow: rgba(0, 150, 200, 0.08);
+
+  --liquid-bg: rgba(255, 255, 255, 0.6);
+  --liquid-border: rgba(0, 50, 80, 0.1);
+  --liquid-highlight: rgba(255, 255, 255, 0.9);
+  --liquid-refract: rgba(79, 195, 247, 0.08);
+
+  --caustic-blue: rgba(0, 150, 200, 0.1);
+  --caustic-teal: rgba(0, 150, 180, 0.06);
+  --chroma-red: rgba(239, 83, 80, 0.1);
+  --chroma-blue: rgba(79, 195, 247, 0.1);
+
+  --glass-bg: rgba(255, 255, 255, 0.6);
+  --glass-border: rgba(0, 50, 80, 0.1);
+  --glass-hover: rgba(255, 255, 255, 0.75);
+
+  --vela-blue: #0288D1;
+  --vela-green: #2E7D32;
+  --vela-red: #C62828;
+  --vela-gold: #F57F17;
+
+  --text-primary: #1A2332;
+  --text-secondary: #546E7A;
+  --text-muted: #90A4AE;
+
+  --shadow-card: rgba(0, 50, 80, 0.08);
+  --shadow-hover: rgba(0, 50, 80, 0.15);
+
+  --background: var(--bg-primary);
+  --foreground: var(--text-primary);
+
+  --video-opacity: 0.5;
+
+  color-scheme: light;
 }
 
 @theme inline {
@@ -62,10 +108,11 @@ body {
   background: var(--ocean-deep);
   color: var(--text-primary);
   font-family: 'Inter', system-ui, sans-serif;
+  transition: background 0.4s ease, color 0.4s ease;
 }
 
 /* ============================================
-   GLASS CARDS — Upgraded with liquid effects
+   GLASS CARDS
    ============================================ */
 
 .glass {
@@ -80,14 +127,13 @@ body {
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border-radius: 20px;
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.2),
+    0 8px 32px var(--shadow-card),
     inset 0 1px 0 var(--liquid-highlight),
     inset 0 -1px 0 rgba(0, 0, 0, 0.1);
   position: relative;
   overflow: hidden;
 }
 
-/* Specular highlight */
 .glass::before {
   content: "";
   position: absolute;
@@ -102,6 +148,14 @@ body {
   );
   pointer-events: none;
   border-radius: 20px 20px 0 0;
+}
+
+[data-theme="light"] .glass::before {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.4) 0%,
+    transparent 100%
+  );
 }
 
 .glass:hover {
@@ -128,7 +182,7 @@ body {
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border-radius: 20px;
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.2),
+    0 8px 32px var(--shadow-card),
     inset 0 1px 0 var(--liquid-highlight),
     inset 0 -1px 0 rgba(0, 0, 0, 0.1);
   position: relative;
@@ -164,7 +218,6 @@ body {
   animation: rainbow-spin 8s linear infinite;
 }
 
-/* Specular highlight for liquid */
 .glass-liquid::before {
   content: "";
   position: absolute;
@@ -180,6 +233,14 @@ body {
   pointer-events: none;
   border-radius: 20px 20px 0 0;
   z-index: 1;
+}
+
+[data-theme="light"] .glass-liquid::before {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.5) 0%,
+    transparent 100%
+  );
 }
 
 @keyframes rainbow-spin {
@@ -200,7 +261,7 @@ body {
   transform: translateY(-2px);
   filter: url(#water-distortion);
   box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.3),
+    0 12px 40px var(--shadow-hover),
     0 0 20px var(--ocean-glow),
     inset 0 1px 0 var(--liquid-highlight),
     inset 0 -1px 0 rgba(0, 0, 0, 0.1);
@@ -212,7 +273,7 @@ body {
 }
 
 /* ============================================
-   COLORED LEFT BORDERS — Now gradient
+   COLORED LEFT BORDERS — Gradient
    ============================================ */
 
 .glass-profit {
@@ -255,13 +316,28 @@ body {
   animation: shimmer 4s ease-in-out infinite;
 }
 
+[data-theme="light"] .shimmer-text {
+  background: linear-gradient(
+    90deg,
+    #0277BD 0%,
+    #00838F 30%,
+    #0288D1 50%,
+    #00838F 70%,
+    #0277BD 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 @keyframes shimmer {
   0%, 100% { background-position: -200% 0; }
   50% { background-position: 200% 0; }
 }
 
 /* ============================================
-   SONAR PULSE — Agent active indicator
+   SONAR PULSE
    ============================================ */
 
 @keyframes sonar {
@@ -278,12 +354,10 @@ body {
    UTILITIES
    ============================================ */
 
-/* Smooth transitions */
 * {
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Number animation */
 @keyframes countUp {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
@@ -293,7 +367,6 @@ body {
   animation: countUp 0.3s ease-out;
 }
 
-/* Gradient text */
 .gradient-text {
   background: linear-gradient(135deg, var(--vela-blue), #90CAF9);
   -webkit-background-clip: text;
@@ -301,7 +374,13 @@ body {
   background-clip: text;
 }
 
-/* Micro-shake on hover */
+[data-theme="light"] .gradient-text {
+  background: linear-gradient(135deg, #0277BD, #0288D1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 @keyframes micro-shake {
   0%, 100% { transform: translateX(0); }
   25% { transform: translateX(-1px); }
@@ -310,6 +389,30 @@ body {
 
 .hover-shake:hover {
   animation: micro-shake 0.3s ease-in-out;
+}
+
+/* ============================================
+   THEME TOGGLE BUTTON
+   ============================================ */
+
+.theme-toggle {
+  appearance: none;
+  border: none;
+  background: var(--liquid-bg);
+  border: 1px solid var(--liquid-border);
+  border-radius: 12px;
+  padding: 6px 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.3s ease;
+  color: var(--text-secondary);
+}
+
+.theme-toggle:hover {
+  background: var(--glass-hover);
+  color: var(--text-primary);
 }
 
 /* ============================================
@@ -339,8 +442,8 @@ body {
     animation: none;
   }
 
-  .ocean-bg * {
-    animation: none !important;
+  .ocean-bg video {
+    display: none;
   }
 
   .glass-interactive:hover {

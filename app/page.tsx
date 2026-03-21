@@ -4,6 +4,7 @@ import { motion, useReducedMotion, useInView } from "framer-motion";
 import { useRef } from "react";
 import Link from "next/link";
 import { OceanBackground } from "@/components/ocean-background";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const features = [
   {
@@ -189,6 +190,12 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen relative">
       <OceanBackground />
+
+      {/* Nav */}
+      <nav className="flex items-center justify-between px-6 py-4">
+        <span className="text-lg font-bold gradient-text">Vela</span>
+        <ThemeToggle />
+      </nav>
 
       {/* Hero */}
       <section className="flex flex-col items-center justify-center px-6 pt-24 pb-20 text-center relative">

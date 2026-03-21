@@ -40,3 +40,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# original video files (heavy, keep compressed .webm only)
+public/*.mp4
+public/*.png
+!public/caustics-*.webm
+PROMPTS_FOR_FLOW.md

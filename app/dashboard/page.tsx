@@ -10,6 +10,7 @@ import { PnlChart } from "@/components/dashboard/pnl-chart";
 import { StopAgent } from "@/components/dashboard/stop-agent";
 import { PortfolioCard } from "@/components/dashboard/portfolio-card";
 import { OceanBackground } from "@/components/ocean-background";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 interface StatusData {
   portfolio: {
@@ -138,7 +139,7 @@ export default function DashboardPage() {
         style={{
           backdropFilter: "blur(16px) saturate(180%)",
           WebkitBackdropFilter: "blur(16px) saturate(180%)",
-          background: "rgba(6, 10, 31, 0.8)",
+          background: "color-mix(in srgb, var(--ocean-deep) 80%, transparent)",
           borderBottom: "1px solid var(--liquid-border)",
         }}
       >
@@ -167,6 +168,7 @@ export default function DashboardPage() {
           {isDemo && (
             <span className="text-xs text-[var(--vela-gold)] glass px-2 py-1 rounded">DEMO</span>
           )}
+          <ThemeToggle />
         </div>
       </header>
 
