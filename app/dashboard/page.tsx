@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { motion, useInView } from "framer-motion";
+import { useRef } from "react";
 import Link from "next/link";
 import { AgentStatus } from "@/components/dashboard/agent-status";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { PnlChart } from "@/components/dashboard/pnl-chart";
 import { StopAgent } from "@/components/dashboard/stop-agent";
+import { PortfolioCard } from "@/components/dashboard/portfolio-card";
+import { OceanBackground } from "@/components/ocean-background";
 
 interface StatusData {
   portfolio: {
@@ -72,6 +76,28 @@ const DEMO_DATA: StatusData = {
   pnl: { usd: 0.21, pct: 2.1 },
 };
 
+const springEntrance = {
+  type: "spring" as const,
+  stiffness: 120,
+  damping: 20,
+};
+
+function AnimatedSection({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-50px" });
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 20 }}
+      animate={isInView ? { opacity: 1, y: 0 } : {}}
+      transition={{ ...springEntrance, delay }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 export default function DashboardPage() {
   const [data, setData] = useState<StatusData>(DEMO_DATA);
   const [walletAddress, setWalletAddress] = useState<string>("");
@@ -103,10 +129,20 @@ export default function DashboardPage() {
   }, [walletAddress, isDemo, fetchStatus]);
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-[var(--glass-border)]">
-        <Link href="/" className="text-xl font-bold gradient-text">
+    <div className="min-h-screen flex flex-col relative">
+      <OceanBackground />
+
+      {/* Sticky frosted header */}
+      <header
+        className="sticky top-0 z-50 flex items-center justify-between px-6 py-4"
+        style={{
+          backdropFilter: "blur(16px) saturate(180%)",
+          WebkitBackdropFilter: "blur(16px) saturate(180%)",
+          background: "rgba(6, 10, 31, 0.8)",
+          borderBottom: "1px solid var(--liquid-border)",
+        }}
+      >
+        <Link href="/" className="text-xl font-bold shimmer-text">
           Vela
         </Link>
         <div className="flex items-center gap-4">
@@ -137,77 +173,44 @@ export default function DashboardPage() {
       {/* Content */}
       <main className="flex-1 px-4 sm:px-6 py-6 max-w-6xl mx-auto w-full space-y-6">
         {/* Status row */}
-        <AgentStatus
-          totalValueUsd={data.portfolio.totalValueUsd}
-          pnlUsd={data.pnl.usd}
-          pnlPct={data.pnl.pct}
-          winRate={data.stats.winRate}
-          totalDecisions={data.stats.totalDecisions}
-          totalX402Spent={data.stats.totalX402Spent}
-          sessionRemaining={isDemo ? "5d 14h" : undefined}
-          isActive={!isDemo || true}
-        />
+        <AnimatedSection>
+          <AgentStatus
+            totalValueUsd={data.portfolio.totalValueUsd}
+            pnlUsd={data.pnl.usd}
+            pnlPct={data.pnl.pct}
+            winRate={data.stats.winRate}
+            totalDecisions={data.stats.totalDecisions}
+            totalX402Spent={data.stats.totalX402Spent}
+            sessionRemaining={isDemo ? "5d 14h" : undefined}
+            isActive={!isDemo || true}
+          />
+        </AnimatedSection>
 
         {/* Chart + Portfolio */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <PnlChart snapshots={data.snapshots} />
-          </div>
-          <div className="glass p-6 space-y-4">
-            <h3 className="text-lg font-semibold">Portfolio</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-[var(--text-secondary)]">USDC (liquid)</span>
-                <span className="font-mono text-sm">${data.portfolio.usdc.usd.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-[var(--text-secondary)]">USDC (Vesu)</span>
-                <span className="font-mono text-sm">
-                  ${data.portfolio.vesuDeposited.toFixed(2)}
-                  <span className="text-xs text-[var(--vela-green)] ml-1">
-                    {data.portfolio.vesuApy.toFixed(1)}% APY
-                  </span>
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-[var(--text-secondary)]">ETH</span>
-                <span className="font-mono text-sm">
-                  ${data.portfolio.eth.usd.toFixed(2)}
-                  <span className="text-xs text-[var(--text-muted)] ml-1">
-                    {data.portfolio.eth.balance.toFixed(6)}
-                  </span>
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-[var(--text-secondary)]">STRK</span>
-                <span className="font-mono text-sm">
-                  ${data.portfolio.strk.usd.toFixed(2)}
-                  <span className="text-xs text-[var(--text-muted)] ml-1">
-                    {data.portfolio.strk.balance.toFixed(4)}
-                  </span>
-                </span>
-              </div>
-              <div className="border-t border-[var(--glass-border)] pt-3 flex justify-between items-center">
-                <span className="text-sm font-medium">Total</span>
-                <span className="font-mono font-bold">
-                  ${data.portfolio.totalValueUsd.toFixed(2)}
-                </span>
-              </div>
+        <AnimatedSection delay={0.1}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <PnlChart snapshots={data.snapshots} />
             </div>
+            <PortfolioCard portfolio={data.portfolio} />
           </div>
-        </div>
+        </AnimatedSection>
 
         {/* Activity */}
-        <ActivityFeed decisions={data.decisions} />
+        <AnimatedSection delay={0.15}>
+          <ActivityFeed decisions={data.decisions} />
+        </AnimatedSection>
 
         {/* Stop agent */}
-        <StopAgent
-          isActive={!isDemo}
-          onStop={() => {
-            setIsDemo(true);
-            setWalletAddress("");
-          }}
-        />
+        <AnimatedSection delay={0.2}>
+          <StopAgent
+            isActive={!isDemo}
+            onStop={() => {
+              setIsDemo(true);
+              setWalletAddress("");
+            }}
+          />
+        </AnimatedSection>
       </main>
     </div>
   );

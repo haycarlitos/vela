@@ -1,12 +1,37 @@
-@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@property --rainbow-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
 
 :root {
   /* Deep ocean background */
   --bg-primary: #0A0E27;
   --bg-secondary: #111638;
 
-  /* Glass */
+  /* Ocean depths */
+  --ocean-deep: #060A1F;
+  --ocean-surface: #121845;
+  --ocean-glow: rgba(79, 195, 247, 0.08);
+
+  /* Liquid glass */
+  --liquid-bg: rgba(255, 255, 255, 0.04);
+  --liquid-border: rgba(255, 255, 255, 0.08);
+  --liquid-highlight: rgba(255, 255, 255, 0.15);
+  --liquid-refract: rgba(79, 195, 247, 0.06);
+
+  /* Caustic light */
+  --caustic-blue: rgba(79, 195, 247, 0.12);
+  --caustic-teal: rgba(0, 188, 212, 0.08);
+
+  /* Chromatic aberration */
+  --chroma-red: rgba(239, 83, 80, 0.15);
+  --chroma-blue: rgba(79, 195, 247, 0.15);
+
+  /* Glass (backwards compat) */
   --glass-bg: rgba(255, 255, 255, 0.06);
   --glass-border: rgba(255, 255, 255, 0.10);
   --glass-hover: rgba(255, 255, 255, 0.10);
@@ -34,41 +59,224 @@
 }
 
 body {
-  background: var(--bg-primary);
+  background: var(--ocean-deep);
   color: var(--text-primary);
   font-family: 'Inter', system-ui, sans-serif;
 }
 
-/* Glass card utility */
+/* ============================================
+   GLASS CARDS — Upgraded with liquid effects
+   ============================================ */
+
 .glass {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
+  background: linear-gradient(
+    135deg,
+    var(--liquid-bg),
+    var(--liquid-refract),
+    var(--liquid-bg)
+  );
+  border: 1px solid var(--liquid-border);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  border-radius: 20px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 var(--liquid-highlight),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Specular highlight */
+.glass::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    transparent 100%
+  );
+  pointer-events: none;
+  border-radius: 20px 20px 0 0;
 }
 
 .glass:hover {
-  background: var(--glass-hover);
+  background: linear-gradient(
+    135deg,
+    var(--glass-hover),
+    var(--liquid-refract),
+    var(--glass-hover)
+  );
 }
 
-/* Glass card with colored left border */
+/* ============================================
+   GLASS-LIQUID — Rainbow animated border
+   ============================================ */
+
+.glass-liquid {
+  background: linear-gradient(
+    135deg,
+    var(--liquid-bg),
+    var(--liquid-refract),
+    var(--liquid-bg)
+  );
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-radius: 20px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 var(--liquid-highlight),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+  border: none;
+}
+
+.glass-liquid::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--rainbow-angle),
+    var(--vela-blue),
+    var(--caustic-teal),
+    var(--vela-green),
+    var(--vela-gold),
+    var(--vela-red),
+    var(--chroma-blue),
+    var(--vela-blue)
+  );
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+  pointer-events: none;
+  animation: rainbow-spin 8s linear infinite;
+}
+
+/* Specular highlight for liquid */
+.glass-liquid::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    transparent 100%
+  );
+  pointer-events: none;
+  border-radius: 20px 20px 0 0;
+  z-index: 1;
+}
+
+@keyframes rainbow-spin {
+  to { --rainbow-angle: 360deg; }
+}
+
+/* ============================================
+   GLASS-INTERACTIVE — Hover distortion + lift
+   ============================================ */
+
+.glass-interactive {
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              filter 0.5s ease,
+              box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-interactive:hover {
+  transform: translateY(-2px);
+  filter: url(#water-distortion);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.3),
+    0 0 20px var(--ocean-glow),
+    inset 0 1px 0 var(--liquid-highlight),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+}
+
+.glass-interactive:active {
+  transform: translateY(0px) scale(0.99);
+  filter: none;
+}
+
+/* ============================================
+   COLORED LEFT BORDERS — Now gradient
+   ============================================ */
+
 .glass-profit {
-  border-left: 3px solid var(--vela-green);
+  border-left: 3px solid transparent;
+  border-image: linear-gradient(180deg, var(--vela-green), rgba(102, 187, 106, 0.3)) 1;
 }
 
 .glass-loss {
-  border-left: 3px solid var(--vela-red);
+  border-left: 3px solid transparent;
+  border-image: linear-gradient(180deg, var(--vela-red), rgba(239, 83, 80, 0.3)) 1;
 }
 
 .glass-hold {
-  border-left: 3px solid var(--text-muted);
+  border-left: 3px solid transparent;
+  border-image: linear-gradient(180deg, var(--text-muted), rgba(90, 94, 115, 0.3)) 1;
 }
 
 .glass-supply {
-  border-left: 3px solid var(--vela-blue);
+  border-left: 3px solid transparent;
+  border-image: linear-gradient(180deg, var(--vela-blue), rgba(79, 195, 247, 0.3)) 1;
 }
+
+/* ============================================
+   SHIMMER TEXT
+   ============================================ */
+
+.shimmer-text {
+  background: linear-gradient(
+    90deg,
+    var(--vela-blue) 0%,
+    #00BCD4 30%,
+    #B3E5FC 50%,
+    #00BCD4 70%,
+    var(--vela-blue) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { background-position: -200% 0; }
+  50% { background-position: 200% 0; }
+}
+
+/* ============================================
+   SONAR PULSE — Agent active indicator
+   ============================================ */
+
+@keyframes sonar {
+  0% { box-shadow: 0 0 0 0 var(--vela-green); }
+  70% { box-shadow: 0 0 0 8px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.sonar-pulse {
+  animation: sonar 2s ease-out infinite;
+}
+
+/* ============================================
+   UTILITIES
+   ============================================ */
 
 /* Smooth transitions */
 * {
@@ -93,7 +301,21 @@ body {
   background-clip: text;
 }
 
-/* Scrollbar */
+/* Micro-shake on hover */
+@keyframes micro-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-1px); }
+  75% { transform: translateX(1px); }
+}
+
+.hover-shake:hover {
+  animation: micro-shake 0.3s ease-in-out;
+}
+
+/* ============================================
+   SCROLLBAR
+   ============================================ */
+
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -105,4 +327,36 @@ body {
 ::-webkit-scrollbar-thumb {
   background: var(--glass-border);
   border-radius: 3px;
+}
+
+/* ============================================
+   REDUCED MOTION
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .glass::before,
+  .glass-liquid::after {
+    animation: none;
+  }
+
+  .ocean-bg * {
+    animation: none !important;
+  }
+
+  .glass-interactive:hover {
+    filter: none;
+    transform: none;
+  }
+
+  .shimmer-text {
+    animation: none;
+  }
+
+  .sonar-pulse {
+    animation: none;
+  }
+
+  @keyframes rainbow-spin {
+    to { --rainbow-angle: 0deg; }
+  }
 }

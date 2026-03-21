@@ -54,6 +54,12 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
+const springEntrance = {
+  type: "spring" as const,
+  stiffness: 100,
+  damping: 20,
+};
+
 export function ActivityFeed({ decisions }: ActivityFeedProps) {
   if (decisions.length === 0) {
     return (
@@ -70,12 +76,13 @@ export function ActivityFeed({ decisions }: ActivityFeedProps) {
       {decisions.map((d, i) => (
         <motion.div
           key={d.id}
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3, delay: 0.05 * i }}
-          className={`glass p-4 ${getBorderClass(d.action, d.outcome)}`}
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springEntrance, delay: 0.05 * i }}
+          className={`glass glass-interactive p-4 ${getBorderClass(d.action, d.outcome)}`}
+          style={{ transition: "filter 0.5s ease" }}
         >
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start justify-between gap-4 relative z-10">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-1">
                 <span className={`font-mono font-bold text-sm ${getActionColor(d.action, d.outcome)}`}>
@@ -91,7 +98,7 @@ export function ActivityFeed({ decisions }: ActivityFeedProps) {
                 )}
                 {d.outcome !== "open" && d.action === "swap" && (
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-full ${
+                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                       d.outcome === "profit"
                         ? "bg-[var(--vela-green)]/20 text-[var(--vela-green)]"
                         : "bg-[var(--vela-red)]/20 text-[var(--vela-red)]"

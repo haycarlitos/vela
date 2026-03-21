@@ -13,6 +13,12 @@ interface AgentStatusProps {
   isActive: boolean;
 }
 
+const springEntrance = {
+  type: "spring" as const,
+  stiffness: 120,
+  damping: 20,
+};
+
 export function AgentStatus({
   totalValueUsd,
   pnlUsd,
@@ -26,13 +32,18 @@ export function AgentStatus({
   const isProfitable = pnlUsd >= 0;
 
   return (
-    <div className="glass p-6">
+    <div className="glass-liquid p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 relative z-10">
         <div className="flex items-center gap-3">
-          <div
-            className={`w-3 h-3 rounded-full ${isActive ? "bg-[var(--vela-green)] animate-pulse" : "bg-[var(--text-muted)]"}`}
-          />
+          <div className="relative">
+            <div
+              className={`w-3 h-3 rounded-full ${isActive ? "bg-[var(--vela-green)]" : "bg-[var(--text-muted)]"}`}
+            />
+            {isActive && (
+              <div className="absolute inset-0 w-3 h-3 rounded-full bg-[var(--vela-green)] sonar-pulse" />
+            )}
+          </div>
           <span className="font-semibold text-lg">
             {isActive ? "Vela is Sailing" : "Agent Idle"}
           </span>
@@ -43,22 +54,26 @@ export function AgentStatus({
       </div>
 
       {/* Main metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 relative z-10">
         <motion.div
           key={totalValueUsd}
           initial={{ opacity: 0.5, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-1"
+          transition={springEntrance}
+          className="space-y-1 group"
         >
           <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider">Portfolio</p>
-          <p className="text-2xl font-bold font-mono">${totalValueUsd.toFixed(2)}</p>
+          <p className="text-2xl font-bold font-mono group-hover:text-[var(--vela-blue)] transition-colors">
+            ${totalValueUsd.toFixed(2)}
+          </p>
         </motion.div>
 
         <motion.div
           key={pnlUsd}
           initial={{ opacity: 0.5, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-1"
+          transition={springEntrance}
+          className="space-y-1 group"
         >
           <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider">P&L</p>
           <p
@@ -69,16 +84,30 @@ export function AgentStatus({
           </p>
         </motion.div>
 
-        <div className="space-y-1">
+        <motion.div
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springEntrance, delay: 0.1 }}
+          className="space-y-1 group"
+        >
           <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider">Win Rate</p>
-          <p className="text-2xl font-bold font-mono">{winRate.toFixed(0)}%</p>
-        </div>
+          <p className="text-2xl font-bold font-mono group-hover:text-[var(--vela-blue)] transition-colors">
+            {winRate.toFixed(0)}%
+          </p>
+        </motion.div>
 
-        <div className="space-y-1">
+        <motion.div
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...springEntrance, delay: 0.15 }}
+          className="space-y-1 group"
+        >
           <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider">Decisions</p>
-          <p className="text-2xl font-bold font-mono">{totalDecisions}</p>
+          <p className="text-2xl font-bold font-mono group-hover:text-[var(--vela-blue)] transition-colors">
+            {totalDecisions}
+          </p>
           <p className="text-xs text-[var(--text-muted)]">x402: ${totalX402Spent.toFixed(3)}</p>
-        </div>
+        </motion.div>
       </div>
     </div>
   );
