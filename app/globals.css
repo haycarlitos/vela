@@ -38,8 +38,8 @@
   --vela-gold: #FFD54F;
 
   --text-primary: #F0F0F5;
-  --text-secondary: #8B8FA3;
-  --text-muted: #5A5E73;
+  --text-secondary: #B0B4C8;
+  --text-muted: #7A7F97;
 
   --shadow-card: rgba(0, 0, 0, 0.2);
   --shadow-hover: rgba(0, 0, 0, 0.3);
@@ -82,9 +82,9 @@
   --vela-red: #C62828;
   --vela-gold: #F57F17;
 
-  --text-primary: #1A2332;
-  --text-secondary: #546E7A;
-  --text-muted: #90A4AE;
+  --text-primary: #0F1A26;
+  --text-secondary: #37474F;
+  --text-muted: #607D8B;
 
   --shadow-card: rgba(0, 50, 80, 0.08);
   --shadow-hover: rgba(0, 50, 80, 0.15);
@@ -253,13 +253,11 @@ body {
 
 .glass-interactive {
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-              filter 0.5s ease,
               box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-interactive:hover {
   transform: translateY(-2px);
-  filter: url(#water-distortion);
   box-shadow:
     0 12px 40px var(--shadow-hover),
     0 0 20px var(--ocean-glow),

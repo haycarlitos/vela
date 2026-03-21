@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion, useInView } from "framer-motion";
+import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 import Link from "next/link";
 import { OceanBackground } from "@/components/ocean-background";
@@ -111,7 +111,6 @@ function HowItWorksSection() {
           >
             <div
               className="w-10 h-10 rounded-full bg-[var(--vela-blue)] text-[var(--bg-primary)] flex items-center justify-center font-bold text-lg shrink-0"
-              style={{ filter: "url(#water-distortion)" }}
             >
               {s.step}
             </div>
@@ -185,8 +184,6 @@ function DemoSection() {
 }
 
 export default function Home() {
-  const prefersReducedMotion = useReducedMotion();
-
   return (
     <div className="flex flex-col min-h-screen relative">
       <OceanBackground />
@@ -199,28 +196,6 @@ export default function Home() {
 
       {/* Hero */}
       <section className="flex flex-col items-center justify-center px-6 pt-24 pb-20 text-center relative">
-        {/* Liquid sphere behind title */}
-        <motion.div
-          className="absolute pointer-events-none"
-          style={{
-            width: 280,
-            height: 280,
-            borderRadius: "50%",
-            background: "radial-gradient(circle at 35% 35%, rgba(79, 195, 247, 0.15), rgba(18, 24, 69, 0.4) 50%, rgba(6, 10, 31, 0.6) 100%)",
-            boxShadow: "0 0 80px rgba(79, 195, 247, 0.1), inset 0 0 60px rgba(79, 195, 247, 0.05)",
-            filter: "url(#water-distortion)",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -55%)",
-          }}
-          animate={prefersReducedMotion ? {} : {
-            scale: [1, 1.03, 1],
-          }}
-          transition={{
-            scale: { duration: 6, repeat: Infinity, ease: "easeInOut" },
-          }}
-        />
-
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -228,10 +203,10 @@ export default function Home() {
           className="relative z-10"
         >
           <h1 className="text-5xl sm:text-7xl font-bold tracking-tight mb-4">
-            <span className="shimmer-text">Vela</span>
+            <span className="gradient-text">Vela</span>
           </h1>
           <motion.p
-            className="text-xl sm:text-2xl text-[var(--text-secondary)] mb-2 font-light"
+            className="text-xl sm:text-2xl text-[var(--text-primary)] mb-2 font-light"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ ...springEntrance, delay: 0.1 }}
@@ -239,7 +214,7 @@ export default function Home() {
             Set sail. Let AI navigate.
           </motion.p>
           <motion.p
-            className="text-sm text-[var(--text-muted)] mb-10 max-w-md mx-auto"
+            className="text-sm text-[var(--text-secondary)] mb-10 max-w-md mx-auto"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ ...springEntrance, delay: 0.2 }}
