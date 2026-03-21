@@ -301,11 +301,11 @@ body {
 .shimmer-text {
   background: linear-gradient(
     90deg,
-    var(--vela-blue) 0%,
-    #00BCD4 30%,
-    #B3E5FC 50%,
-    #00BCD4 70%,
-    var(--vela-blue) 100%
+    #2BC2AE 0%,
+    #3DD5B0 25%,
+    #80F0D0 50%,
+    #3DD5B0 75%,
+    #2BC2AE 100%
   );
   background-size: 200% 100%;
   -webkit-background-clip: text;
@@ -317,11 +317,11 @@ body {
 [data-theme="light"] .shimmer-text {
   background: linear-gradient(
     90deg,
-    #0277BD 0%,
-    #00838F 30%,
-    #0288D1 50%,
-    #00838F 70%,
-    #0277BD 100%
+    #1A9E8E 0%,
+    #2BC2AE 25%,
+    #44E1B4 50%,
+    #2BC2AE 75%,
+    #1A9E8E 100%
   );
   background-size: 200% 100%;
   -webkit-background-clip: text;
@@ -366,14 +366,14 @@ body {
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, var(--vela-blue), #90CAF9);
+  background: linear-gradient(135deg, #44E1B4, #2BC2AE);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 [data-theme="light"] .gradient-text {
-  background: linear-gradient(135deg, #0277BD, #0288D1);
+  background: linear-gradient(135deg, #2BC2AE, #1A9E8E);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

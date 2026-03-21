@@ -208,7 +208,7 @@ export default function Home() {
         >
           <div className="flex items-center justify-center gap-4 mb-4">
             <Image src="/velalogo-clean.png" alt="Vela" width={72} height={72} className="sm:w-24 sm:h-24" />
-            <h1 className="text-5xl sm:text-7xl font-bold tracking-tight gradient-text">
+            <h1 className="text-5xl sm:text-7xl font-bold tracking-tight shimmer-text">
               Vela
             </h1>
           </div>
