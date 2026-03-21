@@ -221,7 +221,7 @@ export default function TestPage() {
         {/* Full Payment Test */}
         <h2 className="text-xl font-bold mb-2">Full x402 Payment</h2>
         <p className="text-sm text-[var(--text-secondary)] mb-6">
-          Connect your Chipi wallet, sign SNIP-12 typed data, and send a real $0.001 USDC payment via x402.
+          Connect your Argent X or Braavos wallet and send a real $0.001 USDC payment via x402.
         </p>
 
         <X402PaySection />
