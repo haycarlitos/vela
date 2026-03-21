@@ -198,13 +198,13 @@ body {
   padding: 1.5px;
   background: conic-gradient(
     from var(--rainbow-angle),
-    var(--vela-blue),
-    var(--caustic-teal),
-    var(--vela-green),
-    var(--vela-gold),
-    var(--vela-red),
-    var(--chroma-blue),
-    var(--vela-blue)
+    #2BC2AE,
+    #44E1B4,
+    #80F0D0,
+    #44E1B4,
+    #2BC2AE,
+    #1A9E8E,
+    #2BC2AE
   );
   mask:
     linear-gradient(#fff 0 0) content-box,
@@ -271,7 +271,28 @@ body {
 }
 
 /* ============================================
-   COLORED LEFT BORDERS — Gradient
+   SCROLL FADE — smooth edges on scrollable areas
+   ============================================ */
+
+.scroll-fade {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 4%,
+    black 96%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 4%,
+    black 96%,
+    transparent 100%
+  );
+}
+
+/* ============================================
+   COLORED LEFT BORDERS
    ============================================ */
 
 .glass-profit {

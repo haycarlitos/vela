@@ -20,8 +20,8 @@ const features = [
     ),
   },
   {
-    title: "No Hidden Fees",
-    description: "Your agent runs for free. No gas costs, no platform fees, no surprises.",
+    title: "Zero Gas Costs",
+    description: "Every transaction is gas-free. You only pay for what your agent earns.",
     icon: (
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
@@ -110,7 +110,7 @@ function HowItWorksSection() {
             transition={{ ...springEntrance, delay: 0.1 * i }}
             className="glass glass-interactive p-5 flex items-start gap-5"
           >
-            <div className="w-10 h-10 rounded-full bg-[var(--vela-blue)] text-[var(--bg-primary)] flex items-center justify-center font-bold text-lg shrink-0">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#44E1B4] to-[#2BC2AE] text-[var(--bg-primary)] flex items-center justify-center font-bold text-lg shrink-0">
               {s.step}
             </div>
             <div>

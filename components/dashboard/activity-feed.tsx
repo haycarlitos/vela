@@ -74,7 +74,7 @@ export function ActivityFeed({ decisions }: ActivityFeedProps) {
     <div>
       <h3 className="text-lg font-semibold mb-4 shimmer-text inline-block">Recent Activity</h3>
       <div
-        className="space-y-3 overflow-y-auto pr-1"
+        className="space-y-3 overflow-y-auto pr-1 scroll-fade"
         style={{ maxHeight: "32rem" }}
       >
         {decisions.map((d, i) => (
