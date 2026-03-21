@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { connect, disconnect } from "starknetkit";
-import { Contract, RpcProvider, type AccountInterface } from "starknet";
+import { Contract, RpcProvider, type AccountInterface, type WalletAccount } from "starknet";
 
 type PayStep = {
   label: string;
@@ -31,6 +30,7 @@ const ERC20_ABI = [
 export default function X402PayClient() {
   const [steps, setSteps] = useState<PayStep[]>([]);
   const [walletAddress, setWalletAddress] = useState("");
+  const [walletName, setWalletName] = useState("");
   const [walletConnected, setWalletConnected] = useState(false);
   const [paying, setPaying] = useState(false);
   const accountRef = useRef<AccountInterface | null>(null);
@@ -41,41 +41,62 @@ export default function X402PayClient() {
 
   const handleConnect = async () => {
     setSteps([]);
-    addStep({ label: "Connecting wallet...", status: "pending" });
+    addStep({ label: "Looking for wallet extensions...", status: "pending" });
 
     try {
-      const result = await connect({
-        modalMode: "alwaysAsk",
-        modalTheme: "dark",
-      });
+      // Check for injected wallet providers (Argent X, Braavos)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const win = window as any;
+      const starknetArgent = win.starknet_argentX as StarknetWallet | undefined;
+      const starknetBraavos = win.starknet_braavos as StarknetWallet | undefined;
+      const starknetDefault = win.starknet as StarknetWallet | undefined;
 
-      if (!result || !result.connector) {
-        addStep({ label: "Connection cancelled", status: "error" });
+      const wallet = starknetArgent || starknetBraavos || starknetDefault;
+
+      if (!wallet) {
+        addStep({
+          label: "No wallet found",
+          status: "error",
+          error: "Install Argent X or Braavos browser extension",
+        });
+        return;
+      }
+
+      addStep({ label: `Found ${wallet.name || "wallet"}, requesting connection...`, status: "pending" });
+
+      // Request connection
+      await wallet.enable();
+
+      if (!wallet.isConnected || !wallet.account) {
+        addStep({ label: "Wallet connection rejected", status: "error" });
         return;
       }
 
       const provider = new RpcProvider({ nodeUrl: RPC_URL });
-      const account = await result.connector.account(provider);
+      const { WalletAccount } = await import("starknet");
+      const addr = wallet.account!.address;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const walletAccount = new WalletAccount({ provider, walletProvider: wallet as any, address: addr });
 
-      accountRef.current = account;
-      const addr = account.address;
+      accountRef.current = walletAccount;
       setWalletAddress(addr);
+      setWalletName(wallet.name || "Wallet");
       setWalletConnected(true);
       addStep({
         label: `Connected: ${addr.slice(0, 10)}...${addr.slice(-6)}`,
         status: "success",
-        data: { wallet: result.connector.name, address: addr },
+        data: { wallet: wallet.name, address: addr },
       });
     } catch (err) {
       addStep({ label: "Connection failed", status: "error", error: String(err) });
     }
   };
 
-  const handleDisconnect = async () => {
-    await disconnect();
+  const handleDisconnect = () => {
     accountRef.current = null;
     setWalletConnected(false);
     setWalletAddress("");
+    setWalletName("");
     setSteps([]);
   };
 
@@ -194,7 +215,7 @@ export default function X402PayClient() {
         <div className="glass p-6">
           <h3 className="font-semibold mb-3">Connect Your Wallet</h3>
           <p className="text-xs text-[var(--text-muted)] mb-4">
-            Connect your Argent or Braavos wallet to pay $0.001 USDC via x402.
+            Connect your Argent X or Braavos wallet to pay $0.001 USDC via x402.
           </p>
           <button
             onClick={handleConnect}
@@ -214,6 +235,7 @@ export default function X402PayClient() {
               Disconnect
             </button>
           </div>
+          <p className="text-xs text-[var(--text-muted)] mb-1">{walletName}</p>
           <p className="text-xs font-mono text-[var(--text-muted)] mb-4">{walletAddress}</p>
           <button
             onClick={handlePay}
@@ -223,7 +245,7 @@ export default function X402PayClient() {
             {paying ? "Processing..." : "Pay $0.001 USDC"}
           </button>
           <p className="text-xs text-[var(--text-muted)] mt-2 text-center">
-            Real USDC transfer on Starknet mainnet - you will approve in your wallet
+            Real USDC transfer on Starknet mainnet - you approve in your wallet
           </p>
         </div>
       )}
@@ -261,4 +283,12 @@ export default function X402PayClient() {
       )}
     </div>
   );
+}
+
+// Minimal type for injected wallet extensions (Argent X, Braavos)
+interface StarknetWallet {
+  name?: string;
+  isConnected: boolean;
+  account?: { address: string };
+  enable: () => Promise<string[]>;
 }
