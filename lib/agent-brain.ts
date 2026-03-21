@@ -17,56 +17,55 @@ export type AgentAction =
   | { action: "hold"; reason: string };
 
 const SYSTEM_PROMPT = `You are Vela, an autonomous DeFi agent managing a portfolio on Starknet mainnet.
-You make decisions every 30 minutes about swaps (AVNU), yield (Vesu), and rebalancing.
+You make decisions based on market signals about swaps (AVNU), yield (Vesu), and rebalancing.
 
 ## Rules — ALWAYS follow these:
 
-1. **Cost awareness**: Before any swap, consider price impact + 0.5% slippage. Only execute if expected gain > total cost.
-2. **Minimum swap**: Never swap less than $${MIN_SWAP_USD} — costs eat the profit.
-3. **x402 reserve**: Keep at least $${X402_RESERVE_USD} USDC untouched for thinking payments.
+1. **Cost awareness**: Round-trip swap cost is ~0.7% (DEX fee + slippage). Only swap if expected gain > 0.7%.
+2. **Minimum swap**: Never swap less than $${MIN_SWAP_USD} — fees eat the profit.
+3. **x402 reserve**: Keep at least $${X402_RESERVE_USD} USDC untouched for AI payments.
 4. **Position sizing**: Never risk more than ${MAX_PORTFOLIO_RISK_PCT}% of total portfolio on a single trade.
 5. **Vesu supply**: Only supply if APY > ${MIN_VESU_APY_SUPPLY}%.
 6. **Vesu withdraw**: Withdraw if APY drops below ${MIN_VESU_APY_KEEP}% OR need liquidity for a profitable swap.
-7. **Self-evaluation**: Review your track record. If a token keeps losing, reduce exposure. If a strategy works, continue.
-8. **Log everything**: Always explain your reasoning including cost breakdown.
-
-## Available actions (respond with exactly ONE JSON object):
-
-{ "action": "swap", "from": "USDC", "to": "ETH", "amount": 2.0, "reason": "..." }
-{ "action": "supply_vesu", "token": "USDC", "amount": 3.0, "reason": "..." }
-{ "action": "withdraw_vesu", "amount": 2.0, "reason": "..." }
-{ "action": "hold", "reason": "..." }
-
-## Important:
-- Respond with ONLY a valid JSON object, nothing else.
-- The "amount" is in USD for swaps and USDC for Vesu operations.
-- Always include a detailed "reason" explaining your logic and cost analysis.`;
+7. **Self-evaluation**: Review your strategy performance below. Double down on what works, stop what doesn't.
+8. **Reasoning**: Always explain your logic with cost breakdown.`;
 
 function formatDecisionHistory(decisions: Decision[]): string {
   if (decisions.length === 0) return "No previous decisions — this is your first cycle.";
 
-  const rows = decisions.map((d) => {
-    const time = new Date(d.created_at).toISOString().slice(11, 16);
-    const outcome = d.outcome === "profit" ? "+profit" : d.outcome === "loss" ? "-loss" : "open";
-    return `| ${time} | ${d.action} | ${d.pair ?? "—"} | $${d.amount_usd?.toFixed(2) ?? "—"} | ${d.reasoning?.slice(0, 60) ?? "—"} | ${outcome} |`;
-  });
-
-  return `| Time | Action | Pair | Amount | Reasoning | Outcome |\n|------|--------|------|--------|-----------|---------|\n${rows.join("\n")}`;
+  return decisions.map((d) => {
+    const time = new Date(d.created_at).toISOString().slice(0, 16).replace("T", " ");
+    const outcome = d.outcome === "profit" ? "WIN" : d.outcome === "loss" ? "LOSS" : "open";
+    const reason = d.reasoning ?? "—";
+    return `- [${time}] ${d.action.toUpperCase()} ${d.pair ?? ""} $${d.amount_usd?.toFixed(2) ?? "—"} → ${outcome} | ${reason}`;
+  }).join("\n");
 }
 
-function formatTrackRecord(decisions: Decision[]): string {
+function formatStrategyPerformance(decisions: Decision[]): string {
   const trades = decisions.filter((d) => d.outcome !== "open" && d.action === "swap");
-  const wins = trades.filter((d) => d.outcome === "profit").length;
-  const losses = trades.filter((d) => d.outcome === "loss").length;
+  if (trades.length === 0) return "No completed trades yet.";
+
+  // Group by pair
+  const byPair: Record<string, { wins: number; losses: number; total: number }> = {};
+  for (const t of trades) {
+    const pair = t.pair ?? "unknown";
+    if (!byPair[pair]) byPair[pair] = { wins: 0, losses: 0, total: 0 };
+    byPair[pair].total++;
+    if (t.outcome === "profit") byPair[pair].wins++;
+    else byPair[pair].losses++;
+  }
+
+  const lines = Object.entries(byPair).map(([pair, stats]) => {
+    const winRate = ((stats.wins / stats.total) * 100).toFixed(0);
+    return `- ${pair}: ${stats.wins}/${stats.total} wins (${winRate}%)${Number(winRate) < 50 ? " ⚠ UNDERPERFORMING" : ""}`;
+  });
+
+  const totalWins = trades.filter((t) => t.outcome === "profit").length;
+  const winRate = ((totalWins / trades.length) * 100).toFixed(0);
   const totalDecisions = decisions.length;
   const totalX402 = decisions.reduce((sum, d) => sum + Number(d.x402_cost), 0);
 
-  if (trades.length === 0) {
-    return `No completed trades yet. ${totalDecisions} total decisions. x402 spent: $${totalX402.toFixed(3)}`;
-  }
-
-  const winRate = ((wins / trades.length) * 100).toFixed(0);
-  return `Win rate: ${wins}/${trades.length} (${winRate}%). Losses: ${losses}. Total decisions: ${totalDecisions}. x402 spent: $${totalX402.toFixed(3)}`;
+  return `Overall: ${totalWins}/${trades.length} wins (${winRate}%). ${totalDecisions} decisions. x402 spent: $${totalX402.toFixed(3)}\n${lines.join("\n")}`;
 }
 
 export function buildPrompt(
@@ -86,17 +85,17 @@ export function buildPrompt(
 - Total value: $${portfolio.totalValueUsd.toFixed(2)}
 
 ## Market Data
-- ETH price: $${portfolio.prices.ETH.toFixed(2)} (1h: ${ethChange.change1h > 0 ? "+" : ""}${ethChange.change1h.toFixed(2)}%, 24h: ${ethChange.change24h > 0 ? "+" : ""}${ethChange.change24h.toFixed(2)}%)
-- STRK price: $${portfolio.prices.STRK.toFixed(4)} (1h: ${strkChange.change1h > 0 ? "+" : ""}${strkChange.change1h.toFixed(2)}%, 24h: ${strkChange.change24h > 0 ? "+" : ""}${strkChange.change24h.toFixed(2)}%)
+- ETH: $${portfolio.prices.ETH.toFixed(2)} (1h: ${ethChange.change1h > 0 ? "+" : ""}${ethChange.change1h.toFixed(2)}%, 24h: ${ethChange.change24h > 0 ? "+" : ""}${ethChange.change24h.toFixed(2)}%)
+- STRK: $${portfolio.prices.STRK.toFixed(4)} (1h: ${strkChange.change1h > 0 ? "+" : ""}${strkChange.change1h.toFixed(2)}%, 24h: ${strkChange.change24h > 0 ? "+" : ""}${strkChange.change24h.toFixed(2)}%)
 - Vesu USDC APY: ${vesuApy.toFixed(2)}%
 
 ## Your Recent Decisions (last 20)
 ${formatDecisionHistory(decisions)}
 
-## Your Track Record
-${formatTrackRecord(decisions)}
+## Strategy Performance
+${formatStrategyPerformance(decisions)}
 
-## What should we do? Respond with a single JSON action.`;
+Respond with a single JSON action.`;
 }
 
 export async function getAgentDecision(
@@ -110,9 +109,15 @@ export async function getAgentDecision(
   const userPrompt = buildPrompt(portfolio, decisions, vesuApy, priceChanges);
 
   const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
+    model: "claude-haiku-4-5-20251001",
     max_tokens: 500,
-    system: SYSTEM_PROMPT,
+    system: [
+      {
+        type: "text",
+        text: SYSTEM_PROMPT,
+        cache_control: { type: "ephemeral" },
+      },
+    ],
     messages: [{ role: "user", content: userPrompt }],
   });
 
@@ -129,7 +134,6 @@ export async function getAgentDecision(
 
   try {
     const parsed = JSON.parse(jsonMatch[0]) as AgentAction;
-    // Validate action type
     if (!["swap", "supply_vesu", "withdraw_vesu", "hold"].includes(parsed.action)) {
       return { action: "hold", reason: `Unknown action type: ${parsed.action}` };
     }
