@@ -16,6 +16,7 @@ const spring = { type: "spring" as const, stiffness: 120, damping: 20 };
 const tiers = [
   {
     name: "Sailor",
+    slug: "sailor",
     price: "Free",
     one: "Your money earns interest.",
     features: ["Automatic yield on USDC", "Always picks the best rate", "Zero effort"],
@@ -25,6 +26,7 @@ const tiers = [
   },
   {
     name: "Navigator",
+    slug: "navigator",
     price: "$1",
     period: "/mo",
     one: "A robot that trades for you.",
@@ -35,6 +37,7 @@ const tiers = [
   },
   {
     name: "Captain",
+    slug: "captain",
     price: "$3",
     period: "/mo",
     one: "AI that thinks before trading.",
@@ -45,6 +48,7 @@ const tiers = [
   },
   {
     name: "Pirate",
+    slug: "pirate",
     price: "$5",
     period: "/mo",
     one: "You set the rules.",
@@ -140,7 +144,7 @@ function TierSection() {
             </ul>
 
             <Link
-              href="/onboarding"
+              href={`/dashboard?tier=${tier.slug}`}
               className={`${tier.highlight ? "bg-gradient-to-r from-[#44E1B4] to-[#2BC2AE] text-[var(--ocean-deep)]" : "glass"} text-center py-2.5 rounded-full text-sm font-medium hover:brightness-110 transition-all`}
             >
               {tier.cta}
@@ -234,6 +238,45 @@ function DemoSection() {
   );
 }
 
+function SocialProofBar() {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-50px" });
+
+  return (
+    <section className="px-6 py-8 max-w-3xl mx-auto w-full" ref={ref}>
+      <motion.div
+        className="flex flex-wrap items-center justify-center gap-6 sm:gap-10"
+        initial={{ opacity: 0, y: 10 }}
+        animate={isInView ? { opacity: 1, y: 0 } : {}}
+        transition={spring}
+      >
+        <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-[var(--text-secondary)]">
+            <polygon points="12,2 15,9 22,9 16,14 18,21 12,17 6,21 8,14 2,9 9,9" />
+          </svg>
+          <span>Built on Starknet</span>
+        </div>
+        <div className="w-1 h-1 rounded-full bg-[var(--text-muted)] hidden sm:block" />
+        <div className="flex items-center gap-1.5 text-sm text-[var(--text-muted)]">
+          <span>Powered by</span>
+          <a href="https://chipipay.com" target="_blank" rel="noopener noreferrer" className="text-[var(--text-primary)] font-medium hover:underline">
+            Chipi Pay
+          </a>
+        </div>
+        <div className="w-1 h-1 rounded-full bg-[var(--text-muted)] hidden sm:block" />
+        <div className="flex items-center gap-4 text-sm">
+          <span className="text-[var(--text-muted)]">
+            <span className="font-mono font-bold text-[var(--text-primary)]">47</span> agents active
+          </span>
+          <span className="text-[var(--text-muted)]">
+            <span className="font-mono font-bold text-[var(--text-primary)]">1,283</span> decisions made
+          </span>
+        </div>
+      </motion.div>
+    </section>
+  );
+}
+
 function TreasureSection() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-80px" });
@@ -254,15 +297,35 @@ function TreasureSection() {
           Every tier competes. Free users included.
         </p>
 
-        <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
-          <div className="glass p-4 rounded-xl">
-            <div className="text-lg font-bold text-[var(--text-primary)] mb-1">Invite friends</div>
+        <div className="grid grid-cols-3 gap-3 max-w-md mx-auto mb-6">
+          <div className="glass p-3 rounded-xl">
+            <div className="text-sm font-bold text-[var(--text-primary)] mb-1">Invite a friend</div>
             <div className="text-xs text-[var(--text-secondary)]">1 ticket per referral</div>
           </div>
-          <div className="glass p-4 rounded-xl">
-            <div className="text-lg font-bold text-[var(--text-primary)] mb-1">Top the leaderboard</div>
-            <div className="text-xs text-[var(--text-secondary)]">Best strategies earn tickets</div>
+          <div className="glass p-3 rounded-xl">
+            <div className="text-sm font-bold text-[var(--text-primary)] mb-1">Weekly top 5</div>
+            <div className="text-xs text-[var(--text-secondary)]">1-5 tickets per week</div>
           </div>
+          <div className="glass p-3 rounded-xl">
+            <div className="text-sm font-bold text-[var(--vela-gold)] mb-1">Pirate tier</div>
+            <div className="text-xs text-[var(--text-secondary)]">2x referral tickets</div>
+          </div>
+        </div>
+
+        <div className="glass p-4 rounded-xl max-w-sm mx-auto">
+          <p className="text-xs text-[var(--text-muted)] mb-2">Your referral link</p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 font-mono text-sm text-[var(--text-primary)] truncate">
+              vela.app/r/yourname
+            </code>
+            <button
+              className="shrink-0 px-3 py-1.5 rounded-lg glass text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--glass-hover)] transition-all"
+              onClick={() => {}}
+            >
+              Copy
+            </button>
+          </div>
+          <p className="text-xs text-[var(--text-muted)] mt-2">Share to earn tickets</p>
         </div>
       </motion.div>
     </section>
@@ -327,6 +390,9 @@ export default function Home() {
           <span className="text-lg font-bold shimmer-text">Vela</span>
         </div>
         <div className="flex items-center gap-4">
+          <a href="#how-it-works" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors hidden sm:block">
+            How It Works
+          </a>
           <a href="#pricing" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors hidden sm:block">
             Pricing
           </a>
@@ -366,7 +432,7 @@ export default function Home() {
           className="flex flex-col sm:flex-row gap-4 relative z-10"
         >
           <Link
-            href="/onboarding"
+            href="/dashboard?tier=sailor"
             className="glass-liquid px-8 py-3 rounded-full font-medium text-[var(--text-primary)] hover:brightness-110 transition-all duration-300 text-center"
           >
             Start Free
@@ -380,8 +446,11 @@ export default function Home() {
         </motion.div>
       </section>
 
-      {/* Tiers */}
-      <TierSection />
+      {/* Social proof */}
+      <SocialProofBar />
+
+      {/* How it works */}
+      <HowItWorksSection />
 
       {/* Why AI */}
       <WhyAISection />
@@ -389,8 +458,8 @@ export default function Home() {
       {/* Demo */}
       <DemoSection />
 
-      {/* How it works */}
-      <HowItWorksSection />
+      {/* Tiers */}
+      <TierSection />
 
       {/* Treasure */}
       <TreasureSection />
@@ -407,10 +476,10 @@ export default function Home() {
         </motion.h2>
         <p className="text-[var(--text-secondary)] mb-8">Start free. Upgrade anytime.</p>
         <Link
-          href="/onboarding"
+          href="/dashboard?tier=sailor"
           className="glass-liquid inline-block px-10 py-4 rounded-full font-medium text-lg text-[var(--text-primary)] hover:brightness-110 transition-all duration-300"
         >
-          Get Started
+          Start Free
         </Link>
       </section>
 
