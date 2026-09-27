@@ -16,6 +16,12 @@
 >
 > Regla: **todo dentro de 14.x**, sin romper la API pública.
 
+> **Actualización 2026-09-27 (prioridades del usuario y compatibilidad):** el sprint en curso está en `docs/SPRINT-WALLETV2-VELA.md`.
+> - B14 (`env.txt`) y B15 (`sk_prod` en test) pasan a última prioridad: repo privado, uso interno.
+> - B13: el `encryptedPrivateKey` en `by-user` es por diseño. Solo se registra en logs; el bind a `sub` rompería a roca (`sub#N`).
+> - X11 y X1 se rediseñaron: el diseño original rompía todo `settle()` y todo pago SHHH actual.
+> - P1: se aplican topes y un meter que falla cerrado (no existe registro de companions).
+
 ---
 
 ## 0. Resumen ejecutivo
