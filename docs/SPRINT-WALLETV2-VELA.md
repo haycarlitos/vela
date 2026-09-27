@@ -108,7 +108,7 @@ Y un cuarto rediseño:
 | NB1a `getEncryptKey` / `usePasskey` en `useChipiSession` + builders puros (`buildAddSessionKeyCall`, `buildSetSpendingPolicyCall`, `buildSessionSetupCalls`) | Vela, walletv2 |
 | S1 campos nuevos `maxCalls` / `callsUsed`; S4 `{ supported }` | Vela, walletv2 |
 | NB3 `sdk.ai` (solo `sk_`) + tipos `ThinkDecision` reales (**D4:** docs con el enum correcto) | Vela |
-| `SessionTxVerifier` opt-in (evento `Transfer` + store de txHash inyectable) — **sin** cambiar el default de X2 | Vela (verifica sus propios cobros x402) |
+| `SessionTxVerifier` opt-in (evento `Transfer` + store de txHash inyectable) - **sin** cambiar el default de X2 | Vela (verifica sus propios cobros x402) |
 | PK3 / NB9 re-exports (`useX402Payment`, `useGuardianRecovery`, `PrfUnsupportedError`…) | Todos |
 | G1 `<Recover>` con `expiresAt` opcional | Todos |
 
