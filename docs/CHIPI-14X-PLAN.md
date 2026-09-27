@@ -58,12 +58,12 @@
 
 | Ola | Versión | Contenido | Cuándo |
 |---|---|---|---|
-| **0** | — (deploys) | Los P0 de backend, facilitator y walletv2; rotación de secretos | **Hoy** |
+| **0** | n/a (deploys) | Los P0 de backend, facilitator y walletv2; rotación de secretos | **Hoy** |
 | **1** | **14.13.1** (patch, solo fixes) | Bugs sin tocar la API pública | Esta semana |
 | **2** | **14.14.0** (minor) | Lo aditivo pequeño: exports, campos nuevos, sesiones SHHH, `sdk.ai`, X2 activo por default junto con `SessionTxVerifier` | ~2 semanas |
 | **3** | **14.15.0** (minor) | x402 que liquida de verdad (`payload.oe`), SHHH en `useX402Payment`, `withX402` para Next, verificador compartido, x402 v2 | Después |
 | **4** | **14.16.0** (minor) | Guardianes en el SDK (desde walletv2), `useSessionSetup` | Después |
-| ∥ | — | Docs y skills | Desde ya |
+| ∥ | n/a | Docs y skills | Desde ya |
 
 ---
 
@@ -161,7 +161,7 @@ Tipos: BACK = chipi-back · FAC = facilitator hosteado · SDK · NB = no constru
 | P9 | Cuota de shield sin límite por usuario (uno quema los 45/día). `/api/privacy/prove` salta `reserveShield` y gasta la cuota del relay | P1 | `server/routers/privacy.ts:182-205`, `app/api/privacy/prove/route.ts:47-56` |
 | P4-app | Cartridge como RPC del browser para privacidad | P1 | `hooks/usePrivacy.tsx:95,528` |
 | P10 | El ledger privado lo escribe el cliente, sin verificación on-chain; el tope del relay está en conflicto (10 vs 50) | P2 | `privacy.ts:225-300`, `privacy-flags.ts:18-33` |
-| B1-app | `pk_prod` en el bundle (`useFxRates.tsx:10`). Esperado para `/ai/prices`, pero amplifica B1, B2 y P1 | — | — |
+| B1-app | `pk_prod` en el bundle (`useFxRates.tsx:10`). Esperado para `/ai/prices`, pero amplifica B1, B2 y P1 | n/a | n/a |
 | R4 | `directRpcUrl()` en el server devolvería Starkscan (solo lectura). Latente | P3 | `lib/chipi/rpc.ts:106,297` |
 
 ### 1.6 Docs y skills
