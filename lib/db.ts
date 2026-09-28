@@ -1,185 +1,206 @@
+import "server-only";
 import pg from "pg";
+import type { TxHashStore } from "@chipi-stack/backend";
+import type { Strategy } from "./strategies";
 
-// Connection pool — works with any Postgres provider (Railway, Neon, Supabase, etc.)
+// Any Postgres (Neon, Railway, Supabase, Vercel Postgres) via DATABASE_URL.
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL?.includes("railway") ? { rejectUnauthorized: false } : undefined,
+  ssl: process.env.DATABASE_SSL === "false" ? undefined : process.env.DATABASE_URL ? { rejectUnauthorized: false } : undefined,
 });
 
-async function query(text: string, params?: unknown[]) {
-  return pool.query(text, params);
+let schemaReady: Promise<void> | null = null;
+
+/** Idempotent. Runs once per process, on first use; there is no public init route. */
+function ensureSchema(): Promise<void> {
+  schemaReady ??= (async () => {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS agents (
+        user_id TEXT PRIMARY KEY,
+        wallet_address TEXT NOT NULL,
+        strategy TEXT NOT NULL,
+        max_trade_usd NUMERIC NOT NULL,
+        session_public_key TEXT NOT NULL,
+        session_encrypted_key TEXT NOT NULL,
+        session_valid_until BIGINT NOT NULL,
+        active BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS agents_active ON agents (active) WHERE active;
+
+      CREATE TABLE IF NOT EXISTS decisions (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        kind TEXT NOT NULL,
+        from_token TEXT,
+        to_token TEXT,
+        amount_usd NUMERIC,
+        reason TEXT NOT NULL,
+        tx_hash TEXT,
+        success BOOLEAN,
+        payment_tx_hash TEXT,
+        ai_cost_usd NUMERIC
+      );
+      CREATE INDEX IF NOT EXISTS decisions_user ON decisions (user_id, created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS x402_payments (
+        tx_hash TEXT PRIMARY KEY,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+  })().catch((err) => {
+    schemaReady = null;
+    throw err;
+  });
+  return schemaReady;
 }
 
-// Initialize database tables
-export async function initDb() {
-  await query(`
-    CREATE TABLE IF NOT EXISTS decisions (
-      id SERIAL PRIMARY KEY,
-      created_at TIMESTAMP DEFAULT NOW(),
-      action TEXT NOT NULL,
-      pair TEXT,
-      amount_usd DECIMAL,
-      entry_price DECIMAL,
-      quote_price_impact DECIMAL,
-      reasoning TEXT,
-      tx_hash TEXT,
-      x402_cost DECIMAL DEFAULT 0.001,
-      outcome TEXT DEFAULT 'open'
-    )
-  `);
-
-  await query(`
-    CREATE TABLE IF NOT EXISTS snapshots (
-      id SERIAL PRIMARY KEY,
-      created_at TIMESTAMP DEFAULT NOW(),
-      total_value_usd DECIMAL,
-      usdc_balance DECIMAL,
-      eth_balance DECIMAL,
-      strk_balance DECIMAL,
-      vesu_deposited DECIMAL,
-      x402_spent_total DECIMAL,
-      pnl_usd DECIMAL,
-      pnl_pct DECIMAL
-    )
-  `);
+async function query<T extends pg.QueryResultRow>(text: string, params?: unknown[]) {
+  await ensureSchema();
+  return pool.query<T>(text, params);
 }
 
-// Decision CRUD
-export interface Decision {
+// ---------- agents ----------
+
+export interface AgentRow {
+  user_id: string;
+  wallet_address: string;
+  strategy: Strategy;
+  max_trade_usd: string;
+  session_public_key: string;
+  session_encrypted_key: string;
+  session_valid_until: string;
+  active: boolean;
+}
+
+/** A new session replaces the previous one; it starts inactive until the chain confirms it. */
+export async function upsertPendingAgent(agent: {
+  userId: string;
+  walletAddress: string;
+  strategy: Strategy;
+  maxTradeUsd: number;
+  sessionPublicKey: string;
+  sessionEncryptedKey: string;
+  sessionValidUntil: number;
+}): Promise<void> {
+  await query(
+    `INSERT INTO agents (user_id, wallet_address, strategy, max_trade_usd, session_public_key,
+                         session_encrypted_key, session_valid_until, active)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE)
+     ON CONFLICT (user_id) DO UPDATE SET
+       wallet_address = EXCLUDED.wallet_address,
+       strategy = EXCLUDED.strategy,
+       max_trade_usd = EXCLUDED.max_trade_usd,
+       session_public_key = EXCLUDED.session_public_key,
+       session_encrypted_key = EXCLUDED.session_encrypted_key,
+       session_valid_until = EXCLUDED.session_valid_until,
+       active = FALSE,
+       updated_at = NOW()`,
+    [
+      agent.userId,
+      agent.walletAddress,
+      agent.strategy,
+      agent.maxTradeUsd,
+      agent.sessionPublicKey,
+      agent.sessionEncryptedKey,
+      agent.sessionValidUntil,
+    ]
+  );
+}
+
+export async function getAgent(userId: string): Promise<AgentRow | null> {
+  const { rows } = await query<AgentRow>(`SELECT * FROM agents WHERE user_id = $1`, [userId]);
+  return rows[0] ?? null;
+}
+
+/** Only flips the flag for the session the caller is talking about, so a stale request cannot re-activate an old key. */
+export async function setAgentActive(userId: string, sessionPublicKey: string, active: boolean): Promise<boolean> {
+  const { rowCount } = await query(
+    `UPDATE agents SET active = $3, updated_at = NOW() WHERE user_id = $1 AND session_public_key = $2`,
+    [userId, sessionPublicKey, active]
+  );
+  return (rowCount ?? 0) > 0;
+}
+
+/** Moves an agent to the back of the tick queue. */
+export async function touchAgent(userId: string): Promise<void> {
+  await query(`UPDATE agents SET updated_at = NOW() WHERE user_id = $1`, [userId]);
+}
+
+export async function listActiveAgents(limit: number): Promise<AgentRow[]> {
+  const { rows } = await query<AgentRow>(
+    `SELECT * FROM agents WHERE active ORDER BY updated_at ASC LIMIT $1`,
+    [limit]
+  );
+  return rows;
+}
+
+// ---------- decisions ----------
+
+export interface DecisionRow {
   id: number;
   created_at: Date;
-  action: string;
-  pair: string | null;
-  amount_usd: number | null;
-  entry_price: number | null;
-  quote_price_impact: number | null;
-  reasoning: string | null;
+  kind: string;
+  from_token: string | null;
+  to_token: string | null;
+  amount_usd: string | null;
+  reason: string;
   tx_hash: string | null;
-  x402_cost: number;
-  outcome: string;
+  success: boolean | null;
+  payment_tx_hash: string | null;
+  ai_cost_usd: string | null;
 }
 
-export async function logDecision(decision: {
-  action: string;
-  pair?: string;
-  amount_usd?: number;
-  entry_price?: number;
-  quote_price_impact?: number;
-  reasoning: string;
-  tx_hash?: string;
-}) {
-  const result = await query(
-    `INSERT INTO decisions (action, pair, amount_usd, entry_price, quote_price_impact, reasoning, tx_hash)
-     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+export async function logDecision(d: {
+  userId: string;
+  kind: string;
+  fromToken?: string;
+  toToken?: string;
+  amountUsd?: number;
+  reason: string;
+  txHash?: string;
+  success?: boolean;
+  paymentTxHash?: string;
+  aiCostUsd?: number;
+}): Promise<void> {
+  await query(
+    `INSERT INTO decisions (user_id, kind, from_token, to_token, amount_usd, reason, tx_hash, success,
+                            payment_tx_hash, ai_cost_usd)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
     [
-      decision.action,
-      decision.pair ?? null,
-      decision.amount_usd ?? null,
-      decision.entry_price ?? null,
-      decision.quote_price_impact ?? null,
-      decision.reasoning,
-      decision.tx_hash ?? null,
-    ],
+      d.userId,
+      d.kind,
+      d.fromToken ?? null,
+      d.toToken ?? null,
+      d.amountUsd ?? null,
+      d.reason.slice(0, 1_000),
+      d.txHash ?? null,
+      d.success ?? null,
+      d.paymentTxHash ?? null,
+      d.aiCostUsd ?? null,
+    ]
   );
-  return result.rows[0] as Decision;
 }
 
-export async function getRecentDecisions(limit = 20): Promise<Decision[]> {
-  const result = await query(
-    `SELECT * FROM decisions ORDER BY created_at DESC LIMIT $1`,
-    [limit],
+export async function recentDecisions(userId: string, limit = 30): Promise<DecisionRow[]> {
+  const { rows } = await query<DecisionRow>(
+    `SELECT * FROM decisions WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2`,
+    [userId, limit]
   );
-  return result.rows as Decision[];
+  return rows;
 }
 
-export async function markOutcome(id: number, outcome: "profit" | "loss") {
-  await query(`UPDATE decisions SET outcome = $1 WHERE id = $2`, [outcome, id]);
-}
+// ---------- x402 ----------
 
-export async function getOpenSwapDecisions(): Promise<Decision[]> {
-  const result = await query(
-    `SELECT * FROM decisions WHERE outcome = 'open' AND action = 'swap' ORDER BY created_at DESC`,
-  );
-  return result.rows as Decision[];
-}
-
-// Snapshot CRUD
-export interface Snapshot {
-  id: number;
-  created_at: Date;
-  total_value_usd: number;
-  usdc_balance: number;
-  eth_balance: number;
-  strk_balance: number;
-  vesu_deposited: number;
-  x402_spent_total: number;
-  pnl_usd: number;
-  pnl_pct: number;
-}
-
-export async function logSnapshot(snapshot: {
-  total_value_usd: number;
-  usdc_balance: number;
-  eth_balance: number;
-  strk_balance: number;
-  vesu_deposited: number;
-  x402_spent_total: number;
-  pnl_usd: number;
-  pnl_pct: number;
-}) {
-  const result = await query(
-    `INSERT INTO snapshots (total_value_usd, usdc_balance, eth_balance, strk_balance,
-                            vesu_deposited, x402_spent_total, pnl_usd, pnl_pct)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-    [
-      snapshot.total_value_usd,
-      snapshot.usdc_balance,
-      snapshot.eth_balance,
-      snapshot.strk_balance,
-      snapshot.vesu_deposited,
-      snapshot.x402_spent_total,
-      snapshot.pnl_usd,
-      snapshot.pnl_pct,
-    ],
-  );
-  return result.rows[0] as Snapshot;
-}
-
-export async function getSnapshots(limit = 100): Promise<Snapshot[]> {
-  const result = await query(
-    `SELECT * FROM snapshots ORDER BY created_at ASC LIMIT $1`,
-    [limit],
-  );
-  return result.rows as Snapshot[];
-}
-
-export async function getLatestSnapshot(): Promise<Snapshot | null> {
-  const result = await query(
-    `SELECT * FROM snapshots ORDER BY created_at DESC LIMIT 1`,
-  );
-  return (result.rows[0] as Snapshot) ?? null;
-}
-
-// Stats
-export async function getTradeStats() {
-  const result = await query(`
-    SELECT
-      COUNT(*) FILTER (WHERE action = 'swap') as total_trades,
-      COUNT(*) FILTER (WHERE action = 'swap' AND outcome = 'profit') as winning_trades,
-      COUNT(*) FILTER (WHERE action = 'swap' AND outcome = 'loss') as losing_trades,
-      COUNT(*) as total_decisions,
-      COALESCE(SUM(x402_cost), 0) as total_x402_spent
-    FROM decisions
-  `);
-  const row = result.rows[0];
-  return {
-    totalTrades: Number(row.total_trades),
-    winningTrades: Number(row.winning_trades),
-    losingTrades: Number(row.losing_trades),
-    totalDecisions: Number(row.total_decisions),
-    totalX402Spent: Number(row.total_x402_spent),
-    winRate: Number(row.total_trades) > 0
-      ? (Number(row.winning_trades) / Number(row.total_trades)) * 100
-      : 0,
-  };
-}
+/** Single use per payment transaction, enforced by the primary key (atomic across instances). */
+export const x402TxHashStore: TxHashStore = {
+  async consume(transactionHash: string): Promise<boolean> {
+    const { rowCount } = await query(
+      `INSERT INTO x402_payments (tx_hash) VALUES ($1) ON CONFLICT (tx_hash) DO NOTHING`,
+      [transactionHash]
+    );
+    return rowCount === 1;
+  },
+};

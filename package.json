@@ -6,17 +6,21 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.80.0",
-    "@chipi-stack/nextjs": "^14.0.0",
+    "@chipi-stack/backend": "^14.14.0",
+    "@chipi-stack/nextjs": "^14.14.0",
+    "@clerk/nextjs": "^7.0.7",
     "framer-motion": "^12.38.0",
     "next": "16.2.0",
     "pg": "^8.20.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^3.8.0",
+    "server-only": "^0.0.1",
     "starknet": "^9.2.1"
   },
   "devDependencies": {
@@ -28,6 +32,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.4"
   }
 }
