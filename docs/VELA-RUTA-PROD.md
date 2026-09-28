@@ -127,3 +127,42 @@ Estado actual: nada funciona de punta a punta (ver `PLAN-PRODUCCION.md` §1–2)
 | Un gasto por encima del tope se reporta como éxito (S5b) | Vela verifica el `Transfer` en cada ejecución |
 | Selector de swap de AVNU cambia | Validar `multi_route_swap` contra el calldata real de `/v1/ai/execute` antes de registrar sesiones |
 | Latencia de la IA o signals sin historial tras un reinicio de chipi-back (~7 min) | `[SILENT]` / hold si no hay signals |
+
+---
+
+## 6. Estado al 2026-09-28
+
+### Chipi
+
+| Pieza | Rama | Estado |
+|---|---|---|
+| 14.13.1 (decode de sesión, nombres → selectores, códigos de error de passkey) | `chipi-pay/sdks` `fix/session-decode-selectors-prf` | build, typecheck, lint, test y docs:check en verde. roca-beneficios y walletv2 compilan con los tarballs (`tsc` + `next build`). Arreglos del review: una sesión re-registrada vuelve a "active" y una sesión local vencida se lee como "expired". **Falta: smoke en mainnet** |
+| 14.14.0 (SHHH en `useChipiSession`, `getEncryptKey`, `setupSession` y builders, `sdk.ai` con `prices`, `SessionTxVerifier`, re-exports en nextjs/expo) | `chipi-pay/sdks` `feat/sessions-shhh-passkey` | Mismo gate en verde (1 496 tests). Review independiente atendido. Changeset minor. Smoke nuevo: `pnpm smoke:session-setup`. **Falta: smoke en mainnet y publicar** |
+| PR paymaster `hash.getSelector` | [chipi-pay/chipi-back#411](https://github.com/chipi-pay/chipi-back/pull/411) | Abierto |
+| CHANGELOG 14.13.1 + 14.14.0 y tutorial 04 | `chipi-pay/build-with-chipi` `tutorial/04-agent-session-passkey` (incluye `docs/changelog-14.13.1`) | El tutorial compila contra los tarballs. El lockfile y la corrida en mainnet quedan pendientes hasta que 14.14.0 esté en npm |
+
+Los smokes no se pudieron correr desde el entorno de trabajo: la red bloquea `api.chipipay.com` y los RPC de Starknet, y el token de GitHub no puede disparar workflows.
+
+### Vela (rama `claude/laughing-fermat-aea3ki`, sobre 14.14.0, sin workarounds)
+
+| # | Pieza | Estado |
+|---|---|---|
+| 1 | Higiene | ✅ Fuera: endpoints inseguros, `/test`, la llave de Infura, la `pk_prod` real (**rotarla**) y `@anthropic-ai/sdk`. Hay LICENSE (MIT), SECURITY.md, CI y README |
+| 2 | Auth | ✅ Clerk + `proxy.ts`. Falta registrar su JWKS (con `aud`) en el dashboard de Chipi |
+| 3 | Passkey + SHHH | ✅ `createWalletPasskey` (PRF obligatorio) → `createWallet({ walletType: "SHHH" })` |
+| 4–5 | Sesión + límites | ✅ La sesión se crea en el server; el browser la registra con sus topes (USDC, ETH, STRK) en **una** firma (`registerSession({ spendingPolicies })`) y el server la confirma on-chain |
+| 6 | Guard | ✅ `lib/policy.ts` (`decide`, `spendingPolicies`) con tests |
+| 7 | Cerebro | ✅ `sdk.ai.think` + `isThinkDecision` + `decide` |
+| 8 | Ejecución | ✅ Swaps con `sdk.ai.execute`; Vesu con el vault de USDC nativo; `waitForTransaction` en cada tx |
+| 9 | Tick multi-tenant | ✅ `/api/tick` (`CRON_SECRET`), con presupuesto de tiempo y cola justa |
+| 10 | x402 | ✅ `/api/think` cobra $0.001, verificado con `SessionTxVerifier` y hash de un solo uso en Postgres. El tick paga su propia decisión |
+| 11 | Dashboard | ✅ Datos reales en `/dashboard`; el demo se movió a `/demo` |
+| 12 | Detener | ✅ `revokeSession(sessionPublicKey)` con un prompt |
+| 13 | Lanzamiento | 🟡 Hay tope de $100 y aviso de beta. Faltan términos, Sentry y fondear la org |
+| 14 | Prueba de 72 h | ⏳ Requiere 14.14.0 publicado |
+
+**Pendiente para desplegar Vela:**
+1. Publicar 14.14.0 y regenerar `package-lock.json`.
+2. Variables de entorno (`.env.example`).
+3. Validar el selector `multi_route_swap` contra el calldata real de `/v1/ai/execute`.
+4. Correr la prueba de 72 h.
