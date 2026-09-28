@@ -1,40 +1,49 @@
 "use client";
 
 import { useState } from "react";
-import { useCreateWallet, Chain } from "@chipi-stack/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
+import { Chain, createWalletPasskey, PrfUnsupportedError, useCreateWallet } from "@chipi-stack/nextjs";
 import { motion } from "framer-motion";
 
 interface CreateWalletProps {
-  externalUserId: string;
-  onWalletCreated: (walletAddress: string, pin: string) => void;
+  userId: string;
+  onCreated: () => void;
 }
 
-export function CreateWallet({ externalUserId, onWalletCreated }: CreateWalletProps) {
-  const [pin, setPin] = useState("");
+/**
+ * A self-custodial SHHH wallet. Its key is encrypted with the passkey's PRF
+ * secret, so neither Chipi nor Vela can decrypt it.
+ */
+export function CreateWallet({ userId, onCreated }: CreateWalletProps) {
+  const { getToken } = useAuth();
+  const { user } = useUser();
+  const { createWalletAsync, isLoading } = useCreateWallet();
   const [error, setError] = useState<string | null>(null);
 
-  const { createWalletAsync, isLoading } = useCreateWallet();
-
   const handleCreate = async () => {
-    if (pin.length < 4) {
-      setError("PIN must be at least 4 digits");
-      return;
-    }
     setError(null);
-
     try {
-      const result = await createWalletAsync({
-        params: {
-          encryptKey: pin,
-          externalUserId,
-          chain: Chain.STARKNET,
-          walletType: "CHIPI",
-        },
-        bearerToken: process.env.NEXT_PUBLIC_CHIPI_API_KEY!,
-      });
+      // Face ID / fingerprint. Requires WebAuthn PRF: without it the wallet
+      // would be custodial, so the SDK throws PrfUnsupportedError instead.
+      const name = user?.primaryEmailAddress?.emailAddress ?? userId;
+      const { encryptKey } = await createWalletPasskey(userId, name);
 
-      onWalletCreated(result.publicKey, pin);
+      // Token after the prompt: one fetched before it can expire on the biometric sheet.
+      const bearerToken = await getToken({ skipCache: true });
+      if (!bearerToken) throw new Error("Your session expired. Sign in again.");
+
+      await createWalletAsync({
+        params: { encryptKey, externalUserId: userId, chain: Chain.STARKNET, walletType: "SHHH" },
+        bearerToken,
+      });
+      onCreated();
     } catch (err) {
+      if (err instanceof PrfUnsupportedError) {
+        setError(
+          "This device can't secure a wallet. Use a recent iPhone or Android, or a password manager with passkeys."
+        );
+        return;
+      }
       setError(err instanceof Error ? err.message : "Failed to create wallet");
     }
   };
@@ -45,27 +54,17 @@ export function CreateWallet({ externalUserId, onWalletCreated }: CreateWalletPr
       animate={{ opacity: 1, y: 0 }}
       className="glass p-8 max-w-md mx-auto text-center"
     >
-      <h2 className="text-2xl font-bold mb-2">Create Your Wallet</h2>
+      <h2 className="text-2xl font-bold mb-2">Create your wallet</h2>
       <p className="text-sm text-[var(--text-secondary)] mb-6">
-        Set a 4-digit PIN to secure your Starknet wallet.
+        Secured by your passkey (Face ID or fingerprint). Only you can move your money.
       </p>
-
-      <input
-        type="password"
-        inputMode="numeric"
-        maxLength={6}
-        placeholder="Enter PIN"
-        value={pin}
-        onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-        className="w-full glass p-3 bg-transparent outline-none text-center text-2xl font-mono tracking-[0.5em] mb-6 focus:border-[var(--vela-blue)]"
-      />
 
       <button
         onClick={handleCreate}
-        disabled={isLoading || pin.length < 4}
+        disabled={isLoading}
         className="w-full py-3 rounded-xl bg-[var(--vela-blue)] text-[var(--bg-primary)] font-medium hover:brightness-110 transition-all disabled:opacity-50"
       >
-        {isLoading ? "Creating wallet..." : "Create Wallet"}
+        {isLoading ? "Creating wallet…" : "Create wallet with passkey"}
       </button>
 
       {error && <p className="mt-3 text-sm text-[var(--vela-red)]">{error}</p>}

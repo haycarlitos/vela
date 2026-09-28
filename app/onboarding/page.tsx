@@ -1,11 +1,5 @@
-"use client";
-
-import dynamic from "next/dynamic";
-
-const OnboardingWithProvider = dynamic(() => import("./client-wrapper"), {
-  ssr: false,
-});
+import OnboardingClient from "./client";
 
 export default function OnboardingPage() {
-  return <OnboardingWithProvider />;
+  return <OnboardingClient />;
 }
