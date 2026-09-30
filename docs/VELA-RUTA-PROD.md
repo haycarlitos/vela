@@ -130,20 +130,22 @@ Estado actual: nada funciona de punta a punta (ver `PLAN-PRODUCCION.md` §1–2)
 
 ---
 
-## 6. Estado al 2026-09-28
+## 6. Estado al 2026-09-30
 
-### Chipi
+### Chipi: listo
 
-| Pieza | Rama | Estado |
-|---|---|---|
-| 14.13.1 (decode de sesión, nombres → selectores, códigos de error de passkey) | `chipi-pay/sdks` `fix/session-decode-selectors-prf` | build, typecheck, lint, test y docs:check en verde. roca-beneficios y walletv2 compilan con los tarballs (`tsc` + `next build`). Arreglos del review: una sesión re-registrada vuelve a "active" y una sesión local vencida se lee como "expired". **Falta: smoke en mainnet** |
-| 14.14.0 (SHHH en `useChipiSession`, `getEncryptKey`, `setupSession` y builders, `sdk.ai` con `prices`, `SessionTxVerifier`, re-exports en nextjs/expo) | `chipi-pay/sdks` `feat/sessions-shhh-passkey` | Mismo gate en verde (1 496 tests). Review independiente atendido. Changeset minor. Smoke nuevo: `pnpm smoke:session-setup`. **Falta: smoke en mainnet y publicar** |
-| PR paymaster `hash.getSelector` | [chipi-pay/chipi-back#411](https://github.com/chipi-pay/chipi-back/pull/411) | Abierto |
-| CHANGELOG 14.13.1 + 14.14.0 y tutorial 04 | `chipi-pay/build-with-chipi` `tutorial/04-agent-session-passkey` (incluye `docs/changelog-14.13.1`) | El tutorial compila contra los tarballs. El lockfile y la corrida en mainnet quedan pendientes hasta que 14.14.0 esté en npm |
+| Pieza | Estado |
+|---|---|
+| 14.13.1 (decode de sesión, nombres → selectores, códigos de error de passkey) | ✅ En npm (chipi-pay/sdks#414, version PR #416) |
+| 14.14.0 (SHHH en `useChipiSession`, `getEncryptKey`, `setupSession` y builders, `sdk.ai`, `SessionTxVerifier`, re-exports en nextjs/expo) | ✅ En npm (chipi-pay/sdks#415, version PR #417). chipi-passkey sigue en 2.3.0 y core en 0.6.0 |
+| Smokes en mainnet | ✅ Los seis pasan contra staging, incluido `smoke:session-setup` (setup → llamada firmada con la sesión → revoke) |
+| Paymaster `hash.getSelector` | ✅ [chipi-pay/chipi-back#411](https://github.com/chipi-pay/chipi-back/pull/411) desplegado (`bcd7fee`). Cubierto por tests unitarios; sin smoke en mainnet |
+| Transferencias on-chain sin Voyager | ✅ [chipi-pay/chipi-back#412](https://github.com/chipi-pay/chipi-back/pull/412) desplegado (eventos de Starknet, Starkscan primero) |
+| CHANGELOG 14.13.1 + 14.14.0 y tutorial 04 | ✅ build-with-chipi #30 y #31. Falta la corrida del tutorial en mainnet con una passkey real |
 
-Los smokes no se pudieron correr desde el entorno de trabajo: la red bloquea `api.chipipay.com` y los RPC de Starknet, y el token de GitHub no puede disparar workflows.
+### Vela (rama `claude/laughing-fermat-aea3ki`, sobre 14.14.0 de npm, sin workarounds)
 
-### Vela (rama `claude/laughing-fermat-aea3ki`, sobre 14.14.0, sin workarounds)
+`package-lock.json` resuelve todo `@chipi-stack` a 14.14.0. lint, typecheck, 35 tests y `next build` en verde.
 
 | # | Pieza | Estado |
 |---|---|---|
@@ -159,10 +161,11 @@ Los smokes no se pudieron correr desde el entorno de trabajo: la red bloquea `ap
 | 11 | Dashboard | ✅ Datos reales en `/dashboard`; el demo se movió a `/demo` |
 | 12 | Detener | ✅ `revokeSession(sessionPublicKey)` con un prompt |
 | 13 | Lanzamiento | 🟡 Hay tope de $100 y aviso de beta. Faltan términos, Sentry y fondear la org |
-| 14 | Prueba de 72 h | ⏳ Requiere 14.14.0 publicado |
+| 14 | Prueba de 72 h | ⏳ Lista para arrancar cuando se cumplan los pasos de abajo |
 
-**Pendiente para desplegar Vela:**
-1. Publicar 14.14.0 y regenerar `package-lock.json`.
-2. Variables de entorno (`.env.example`).
-3. Validar el selector `multi_route_swap` contra el calldata real de `/v1/ai/execute`.
-4. Correr la prueba de 72 h.
+**Pendiente para desplegar Vela (en orden):**
+1. **Validar las entrypoints de swap.** Las calls de `/v1/ai/execute` tienen que usar solo funciones de `SESSION_ENTRYPOINTS` (`lib/config.ts`); si AVNU usa otra, el contrato rechaza cada swap. Se revisa con `jq '[.calls[].entrypoint]'` sobre la respuesta de un swap de $1 (USDC→ETH, ETH→USDC, USDC→STRK).
+2. **Variables de entorno en Vercel** (`.env.example`): Clerk, `pk_`/`sk_` de una org de Vela con créditos de IA, `VELA_SESSION_SECRET`, `VELA_TREASURY_ADDRESS`, `CRON_SECRET`, `DATABASE_URL`.
+3. **JWKS de Clerk** en el dashboard de Chipi, con regla `aud`.
+4. **Términos y Sentry** (#13).
+5. **Prueba de 72 h** (#14): 3 wallets internas × $20, creadas con passkey en un navegador.
