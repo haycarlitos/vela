@@ -1,215 +1,129 @@
 "use client";
 
-import { useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import { motion, AnimatePresence, useInView } from "framer-motion";
-import { useRef } from "react";
-import Image from "next/image";
+import { useState } from "react";
 import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
+import { getWalletEncryptKey, useChipiSession, useChipiWallet } from "@chipi-stack/nextjs";
 import { AgentStatus } from "@/components/dashboard/agent-status";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
-import { PnlChart } from "@/components/dashboard/pnl-chart";
-import { StopAgent } from "@/components/dashboard/stop-agent";
 import { PortfolioCard } from "@/components/dashboard/portfolio-card";
-import { TreasureCard } from "@/components/dashboard/treasure-card";
-import { LeaderboardCard } from "@/components/dashboard/leaderboard-card";
-import { AskAI } from "@/components/dashboard/ask-ai";
-import { SettingsPanel } from "@/components/dashboard/settings-panel";
-import { OceanBackground } from "@/components/ocean-background";
-import { ThemeToggle } from "@/components/theme-toggle";
-import {
-  type Tier,
-  type TabId,
-  TIER_LABELS,
-  TIER_COLORS,
-  TIER_TABS,
-  TIER_FEATURES,
-  DEMO_DATA_BY_TIER,
-  TREASURE_BY_TIER,
-  ASK_AI_CONVERSATIONS,
-  getLeaderboardData,
-} from "@/lib/demo-data";
+import { StopAgent } from "@/components/dashboard/stop-agent";
+import { useAgentState, type AgentState } from "@/lib/use-agent-state";
 
-const spring = { type: "spring" as const, stiffness: 120, damping: 20 };
+const ACTION_NAMES: Record<string, string> = { supply: "supply_vesu", withdraw: "withdraw_vesu" };
 
-function AnimatedSection({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-50px" });
-
-  return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 20 }}
-      animate={isInView ? { opacity: 1, y: 0 } : {}}
-      transition={{ ...spring, delay }}
-    >
-      {children}
-    </motion.div>
-  );
+function feed(decisions: NonNullable<AgentState["decisions"]>) {
+  return decisions.map((d) => ({
+    id: d.id,
+    createdAt: d.createdAt,
+    action: ACTION_NAMES[d.kind] ?? d.kind,
+    pair: d.fromToken && d.toToken ? `${d.fromToken} → ${d.toToken}` : null,
+    amountUsd: d.amountUsd,
+    reasoning: d.reason,
+    txHash: d.txHash,
+    outcome: "open",
+  }));
 }
 
-function DashboardContent() {
-  const searchParams = useSearchParams();
-  const tierParam = searchParams.get("tier");
-  const tier: Tier = (["sailor", "navigator", "captain", "pirate"].includes(tierParam || "") ? tierParam : "captain") as Tier;
+function timeLeft(validUntil: number): string {
+  const seconds = validUntil - Math.floor(Date.now() / 1000);
+  if (seconds <= 0) return "expired";
+  const days = Math.floor(seconds / 86_400);
+  const hours = Math.floor((seconds % 86_400) / 3_600);
+  return days > 0 ? `${days}d ${hours}h` : `${hours}h`;
+}
 
-  const [activeTab, setActiveTab] = useState<TabId>("overview");
-  const tabs = TIER_TABS[tier];
-  const data = DEMO_DATA_BY_TIER[tier];
-  const features = TIER_FEATURES[tier];
-  const treasure = TREASURE_BY_TIER[tier];
-  const leaderboard = getLeaderboardData(tier);
-  const conversation = ASK_AI_CONVERSATIONS[tier];
+export default function DashboardPage() {
+  const { userId, getToken } = useAuth();
+  const { state, error, refresh } = useAgentState();
+  const [stopError, setStopError] = useState<string | null>(null);
+
+  const { wallet } = useChipiWallet({ externalUserId: userId ?? null, getBearerToken: getToken });
+  const { revokeSession } = useChipiSession({
+    wallet,
+    getEncryptKey: () => getWalletEncryptKey(),
+    getBearerToken: () => getToken({ skipCache: true }),
+    autoCheckStatus: false,
+  });
+
+  if (error) return <Centered>{error}</Centered>;
+  if (!state) return <Centered>Loading…</Centered>;
+  if (!state.wallet || !state.agent) {
+    return (
+      <Centered>
+        <Link href="/onboarding" className="text-[var(--vela-blue)] hover:underline">
+          Hire your agent
+        </Link>
+      </Centered>
+    );
+  }
+
+  const agent = state.agent;
+  const active = agent.active && Boolean(state.session?.isActive);
+  const decisions = state.decisions ?? [];
+  const paid = decisions.filter((d) => d.paymentTxHash).length * 0.001;
+
+  const stop = async () => {
+    setStopError(null);
+    try {
+      // One passkey prompt. The browser never held the session: pass its key.
+      const txHash = await revokeSession(agent.sessionPublicKey);
+      await fetch("/api/agents", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionPublicKey: agent.sessionPublicKey, txHash, active: false }),
+      });
+      await refresh();
+    } catch (err) {
+      setStopError(err instanceof Error ? err.message : String(err));
+    }
+  };
 
   return (
-    <div className="min-h-screen flex flex-col relative">
-      <OceanBackground />
-
-      {/* Header */}
-      <header
-        className="sticky top-0 z-50 flex items-center justify-between px-6 py-4"
-        style={{
-          backdropFilter: "blur(16px) saturate(180%)",
-          WebkitBackdropFilter: "blur(16px) saturate(180%)",
-          background: "color-mix(in srgb, var(--ocean-deep) 80%, transparent)",
-          borderBottom: "1px solid var(--liquid-border)",
-        }}
-      >
-        <Link href="/" className="flex items-center gap-2">
-          <Image src="/velalogo-clean.png" alt="Vela" width={24} height={24} />
-          <span className="text-xl font-bold shimmer-text">Vela</span>
+    <div className="min-h-screen max-w-5xl mx-auto px-4 py-8 space-y-6">
+      <header className="flex items-center justify-between">
+        <Link href="/" className="text-xl font-bold gradient-text">
+          Vela
         </Link>
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-xs text-[var(--text-muted)] hidden sm:block">
-            0x04a1...f0a1
-          </span>
-          <span
-            className="text-xs font-medium px-2.5 py-1 rounded-full"
-            style={{
-              backgroundColor: `color-mix(in srgb, ${TIER_COLORS[tier]} 20%, transparent)`,
-              color: TIER_COLORS[tier],
-            }}
-          >
-            {TIER_LABELS[tier]}
-          </span>
-          <ThemeToggle />
-        </div>
+        <span className="text-xs text-[var(--text-muted)] font-mono">
+          {state.wallet.address.slice(0, 10)}…{state.wallet.address.slice(-6)}
+        </span>
       </header>
 
-      {/* Tab navigation */}
-      <nav className="px-4 sm:px-6 pt-4 max-w-6xl mx-auto w-full" role="tablist" aria-label="Dashboard sections">
-        <div className="flex gap-1 glass p-1.5 rounded-full w-fit overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              role="tab"
-              aria-selected={activeTab === tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap min-h-[44px] focus-visible:ring-2 focus-visible:ring-[var(--vela-blue)] outline-none ${
-                activeTab === tab.id
-                  ? "bg-gradient-to-r from-[#44E1B4] to-[#2BC2AE] text-[var(--ocean-deep)]"
-                  : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+      <p className="text-xs text-[var(--vela-gold)]">
+        Beta: the wallet contract (SHHH V8.4) is pending its external audit. Keep at most ${state.depositCapUsd} in it.
+      </p>
+
+      <AgentStatus
+        totalValueUsd={state.totalUsd ?? 0}
+        totalDecisions={decisions.length}
+        totalX402Spent={paid}
+        sessionRemaining={
+          active && state.session
+            ? `${timeLeft(state.session.validUntil)} · ${state.session.remainingCalls} calls`
+            : undefined
+        }
+        isActive={active}
+      />
+
+      <div className="grid gap-6 md:grid-cols-2">
+        {state.portfolio && <PortfolioCard portfolio={{ ...state.portfolio, totalValueUsd: state.totalUsd ?? 0, usdc: state.portfolio.USDC, eth: { ...state.portfolio.ETH, price: state.prices?.ETH ?? 0 }, strk: { ...state.portfolio.STRK, price: state.prices?.STRK ?? 0 }, vesuDeposited: state.portfolio.vesuUsd }} />}
+        <div className="space-y-4">
+          <StopAgent isActive={active} onStop={stop} />
+          {stopError && <p className="text-sm text-[var(--vela-red)]">{stopError}</p>}
+          {!active && (
+            <Link href="/onboarding" className="block glass p-4 text-center text-[var(--vela-blue)]">
+              {agent.active ? "Session ended. Hire again" : "Hire your agent again"}
+            </Link>
+          )}
         </div>
-      </nav>
+      </div>
 
-      {/* Tab content */}
-      <main className="flex-1 px-4 sm:px-6 py-6 max-w-6xl mx-auto w-full">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            className="space-y-6"
-          >
-            {activeTab === "overview" && (
-              <>
-                <AnimatedSection>
-                  <AgentStatus
-                    totalValueUsd={data.portfolio.totalValueUsd}
-                    pnlUsd={data.pnl.usd}
-                    pnlPct={data.pnl.pct}
-                    winRate={data.stats.winRate}
-                    totalDecisions={data.stats.totalDecisions}
-                    totalX402Spent={data.stats.totalX402Spent}
-                    sessionRemaining="5d 14h"
-                    isActive={true}
-                  />
-                </AnimatedSection>
-
-                <AnimatedSection delay={0.1}>
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2">
-                      <PnlChart snapshots={data.snapshots} />
-                    </div>
-                    <PortfolioCard portfolio={data.portfolio} />
-                  </div>
-                </AnimatedSection>
-
-                <AnimatedSection delay={0.15}>
-                  <ActivityFeed decisions={data.decisions} />
-                </AnimatedSection>
-
-                {/* Ask AI (shown in overview for Captain+, upgrade prompt for others) */}
-                <AnimatedSection delay={0.2}>
-                  <AskAI tier={tier} conversation={conversation} />
-                </AnimatedSection>
-
-                <AnimatedSection delay={0.25}>
-                  <StopAgent
-                    isActive={true}
-                    onStop={() => {}}
-                  />
-                </AnimatedSection>
-              </>
-            )}
-
-            {activeTab === "leaderboard" && (
-              <AnimatedSection>
-                <LeaderboardCard tier={tier} entries={leaderboard} />
-              </AnimatedSection>
-            )}
-
-            {activeTab === "treasure" && (
-              <AnimatedSection>
-                <TreasureCard tier={tier} data={treasure} />
-              </AnimatedSection>
-            )}
-
-            {activeTab === "strategy" && features.customStrategy && (
-              <AnimatedSection>
-                <SettingsPanel tier={tier} />
-              </AnimatedSection>
-            )}
-
-            {activeTab === "settings" && (
-              <AnimatedSection>
-                <SettingsPanel tier={tier} />
-              </AnimatedSection>
-            )}
-          </motion.div>
-        </AnimatePresence>
-      </main>
+      <ActivityFeed decisions={feed(decisions)} />
     </div>
   );
 }
 
-export default function DashboardPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center">
-          <span className="shimmer-text text-lg font-bold">Loading...</span>
-        </div>
-      }
-    >
-      <DashboardContent />
-    </Suspense>
-  );
+function Centered({ children }: { children: React.ReactNode }) {
+  return <div className="min-h-screen flex items-center justify-center text-[var(--text-secondary)]">{children}</div>;
 }

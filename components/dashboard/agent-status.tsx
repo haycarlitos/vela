@@ -4,9 +4,10 @@ import { motion } from "framer-motion";
 
 interface AgentStatusProps {
   totalValueUsd: number;
-  pnlUsd: number;
-  pnlPct: number;
-  winRate: number;
+  /** Omitted on the live dashboard until P&L is tracked. */
+  pnlUsd?: number;
+  pnlPct?: number;
+  winRate?: number;
   totalDecisions: number;
   totalX402Spent: number;
   sessionRemaining?: string;
@@ -29,7 +30,7 @@ export function AgentStatus({
   sessionRemaining,
   isActive,
 }: AgentStatusProps) {
-  const isProfitable = pnlUsd >= 0;
+  const isProfitable = (pnlUsd ?? 0) >= 0;
 
   return (
     <div className="glass-liquid p-6">
@@ -68,6 +69,7 @@ export function AgentStatus({
           </p>
         </motion.div>
 
+        {pnlUsd !== undefined && pnlPct !== undefined && (
         <motion.div
           key={pnlUsd}
           initial={{ opacity: 0.5, y: 4 }}
@@ -83,7 +85,9 @@ export function AgentStatus({
             <span className="text-sm">({isProfitable ? "+" : ""}{pnlPct.toFixed(1)}%)</span>
           </p>
         </motion.div>
+        )}
 
+        {winRate !== undefined && (
         <motion.div
           initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
@@ -95,6 +99,7 @@ export function AgentStatus({
             {winRate.toFixed(0)}%
           </p>
         </motion.div>
+        )}
 
         <motion.div
           initial={{ opacity: 0, y: 4 }}

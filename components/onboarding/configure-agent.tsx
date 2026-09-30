@@ -1,196 +1,149 @@
 "use client";
 
 import { useState } from "react";
-import { useChipiSession } from "@chipi-stack/nextjs";
+import { useAuth } from "@clerk/nextjs";
+import { getWalletEncryptKey, useChipiSession, useChipiWallet } from "@chipi-stack/nextjs";
 import { motion } from "framer-motion";
-
-type Strategy = "conservative" | "balanced" | "aggressive";
+import { STRATEGIES, type Strategy } from "@/lib/strategies";
 
 interface ConfigureAgentProps {
-  wallet: { publicKey: string; walletType?: string };
-  pin: string;
-  balance: number;
-  onHired: (config: { strategy: Strategy; maxPerTrade: number; maxPerDay: number; duration: number }) => void;
+  balanceUsd: number;
+  onHired: () => void;
 }
 
-const strategies: { key: Strategy; label: string; description: string }[] = [
-  { key: "conservative", label: "Conservative", description: "Yield only -- supply to Vesu, no trading" },
-  { key: "balanced", label: "Balanced", description: "Yield + small trades when profitable" },
-  { key: "aggressive", label: "Aggressive", description: "Active trading + yield optimization" },
-];
+interface HireResponse {
+  sessionPublicKey: string;
+  validUntil: number;
+  maxCalls: number;
+  allowedEntrypoints: string[];
+  spendingPolicies: Array<{ token: string; maxPerCall: string; maxPerWindow: string; windowSeconds: number }>;
+  error?: string;
+}
 
-export function ConfigureAgent({ wallet, pin, balance, onHired }: ConfigureAgentProps) {
+export function ConfigureAgent({ balanceUsd, onHired }: ConfigureAgentProps) {
+  const { userId, getToken } = useAuth();
   const [strategy, setStrategy] = useState<Strategy>("balanced");
-  const [maxPerTrade, setMaxPerTrade] = useState(Math.min(5, balance / 2));
-  const [maxPerDay, setMaxPerDay] = useState(Math.min(10, balance));
-  const [duration, setDuration] = useState(7);
+  const [maxTradeUsd, setMaxTradeUsd] = useState(Math.max(1, Math.min(5, Math.floor(balanceUsd / 4))));
   const [status, setStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const {
-    createSession,
-    registerSession,
-    isCreating,
-    isRegistering,
-  } = useChipiSession({
-    wallet: wallet as Parameters<typeof useChipiSession>[0]["wallet"],
-    encryptKey: pin,
-    getBearerToken: async () => process.env.NEXT_PUBLIC_CHIPI_API_KEY!,
-    defaultDurationSeconds: duration * 86400,
-    defaultMaxCalls: 500,
+  const { wallet } = useChipiWallet({ externalUserId: userId ?? null, getBearerToken: getToken });
+  const { registerSession, supportsSession, isRegistering } = useChipiSession({
+    wallet,
+    // The passkey prompt appears only when the user hires the agent.
+    getEncryptKey: () => getWalletEncryptKey(),
+    getBearerToken: () => getToken({ skipCache: true }),
+    autoCheckStatus: false,
   });
-
-  const loading = isCreating || isRegistering;
-  const weeklyX402Cost = (48 * duration * 0.001).toFixed(2);
 
   const handleHire = async () => {
     setError(null);
     try {
-      // Step 1: Create session locally
-      setStatus("Creating session key...");
-      const session = await createSession({
-        encryptKey: pin,
-        durationSeconds: duration * 86400,
+      // 1. Vela's server creates the session key and keeps the private half.
+      setStatus("Preparing your agent's key…");
+      const res = await fetch("/api/agents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ strategy, maxTradeUsd }),
+      });
+      const hire = (await res.json()) as HireResponse;
+      if (!res.ok) throw new Error(hire.error ?? `HTTP ${res.status}`);
+
+      // 2. One passkey prompt: the session and its caps, in one transaction.
+      setStatus("Confirm with your passkey…");
+      const txHash = await registerSession({
+        sessionPublicKey: hire.sessionPublicKey,
+        validUntil: hire.validUntil,
+        maxCalls: hire.maxCalls,
+        allowedEntrypoints: hire.allowedEntrypoints,
+        spendingPolicies: hire.spendingPolicies.map((p) => ({
+          token: p.token,
+          maxPerCall: BigInt(p.maxPerCall),
+          maxPerWindow: BigInt(p.maxPerWindow),
+          windowSeconds: p.windowSeconds,
+        })),
       });
 
-      // Step 2: Register session on-chain
-      setStatus("Registering on-chain (gasless)...");
-      await registerSession({
-        sessionPublicKey: session.publicKey,
-        validUntil: session.validUntil,
-        maxCalls: 500,
-        allowedEntrypoints: [
-          "transfer",
-          "approve",
-          "deposit",
-          "withdraw",
-          "redeem",
-        ],
+      // 3. Vela checks the chain before the agent starts.
+      setStatus("Waiting for Starknet…");
+      const confirm = await fetch("/api/agents", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionPublicKey: hire.sessionPublicKey, txHash, active: true }),
       });
+      if (!confirm.ok) {
+        throw new Error(((await confirm.json()) as { error?: string }).error ?? `HTTP ${confirm.status}`);
+      }
 
-      setStatus("Agent hired!");
-      onHired({ strategy, maxPerTrade, maxPerDay, duration });
+      setStatus("Your agent is sailing.");
+      onHired();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to set up session");
+      setError(err instanceof Error ? err.message : "Failed to hire the agent");
       setStatus("");
     }
   };
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="glass p-8 max-w-lg mx-auto"
-    >
-      <h2 className="text-2xl font-bold mb-6 text-center">Configure Your Agent</h2>
+  if (wallet && !supportsSession) {
+    return <p className="text-[var(--vela-red)]">This wallet can&apos;t use an agent.</p>;
+  }
 
-      {/* Strategy */}
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass p-8 max-w-lg mx-auto">
+      <h2 className="text-2xl font-bold mb-6 text-center">Hire your agent</h2>
+
       <div className="mb-6">
         <label className="text-sm font-medium text-[var(--text-secondary)] mb-3 block">Strategy</label>
         <div className="space-y-2">
-          {strategies.map((s) => (
+          {(Object.keys(STRATEGIES) as Strategy[]).map((key) => (
             <button
-              key={s.key}
-              onClick={() => setStrategy(s.key)}
+              key={key}
+              onClick={() => setStrategy(key)}
               className={`w-full glass p-3 text-left transition-all ${
-                strategy === s.key
-                  ? "border-[var(--vela-blue)] bg-[var(--vela-blue)]/10"
-                  : ""
+                strategy === key ? "border-[var(--vela-blue)] bg-[var(--vela-blue)]/10" : ""
               }`}
             >
-              <div className="flex items-center gap-3">
-                <div
-                  className={`w-4 h-4 rounded-full border-2 ${
-                    strategy === s.key
-                      ? "border-[var(--vela-blue)] bg-[var(--vela-blue)]"
-                      : "border-[var(--text-muted)]"
-                  }`}
-                />
-                <div>
-                  <p className="font-medium text-sm">{s.label}</p>
-                  <p className="text-xs text-[var(--text-muted)]">{s.description}</p>
-                </div>
-              </div>
+              <p className="font-medium text-sm">{STRATEGIES[key].label}</p>
+              <p className="text-xs text-[var(--text-muted)]">{STRATEGIES[key].description}</p>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Duration */}
       <div className="mb-6">
-        <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">Duration</label>
-        <select
-          value={duration}
-          onChange={(e) => setDuration(Number(e.target.value))}
-          className="w-full glass p-3 bg-transparent outline-none text-sm"
-        >
-          <option value={1}>1 day</option>
-          <option value={3}>3 days</option>
-          <option value={7}>7 days</option>
-          <option value={14}>14 days</option>
-          <option value={30}>30 days</option>
-        </select>
-      </div>
-
-      {/* Spending caps */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div>
-          <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">Max per trade ($)</label>
-          <input
-            type="number"
-            value={maxPerTrade}
-            onChange={(e) => setMaxPerTrade(Number(e.target.value))}
-            min={0.5}
-            max={balance}
-            step={0.5}
-            className="w-full glass p-3 bg-transparent outline-none text-sm font-mono"
-          />
-        </div>
-        <div>
-          <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">Max per day ($)</label>
-          <input
-            type="number"
-            value={maxPerDay}
-            onChange={(e) => setMaxPerDay(Number(e.target.value))}
-            min={1}
-            max={balance * 2}
-            step={1}
-            className="w-full glass p-3 bg-transparent outline-none text-sm font-mono"
-          />
-        </div>
-      </div>
-
-      {/* Summary */}
-      <div className="glass p-4 mb-6 space-y-2 text-sm">
-        <p className="font-medium text-[var(--text-secondary)]">Your agent will:</p>
-        <ul className="space-y-1 text-[var(--text-secondary)]">
-          <li>Monitor prices every 30 min</li>
-          {strategy !== "conservative" && <li>Trade on AVNU when profitable</li>}
-          <li>Earn yield on Vesu</li>
-          <li>Pay $0.001 per decision (x402)</li>
-          <li>Never exceed your spending caps</li>
-        </ul>
-        <p className="text-xs text-[var(--text-muted)] pt-2 border-t border-[var(--glass-border)]">
-          Estimated x402 cost: ${weeklyX402Cost} for {duration} days
+        <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">Max per trade ($)</label>
+        <input
+          type="number"
+          value={maxTradeUsd}
+          onChange={(e) => setMaxTradeUsd(Number(e.target.value))}
+          min={0.5}
+          max={50}
+          step={0.5}
+          className="w-full glass p-3 bg-transparent outline-none text-sm font-mono"
+        />
+        <p className="text-xs text-[var(--text-muted)] mt-2">
+          Enforced by your wallet contract: at most ${maxTradeUsd} per trade and ${maxTradeUsd * 4} per day, for 7 days.
         </p>
       </div>
 
-      {/* Status */}
-      {status && (
-        <p className="text-sm text-[var(--vela-blue)] text-center mb-4">{status}</p>
-      )}
+      <div className="glass p-4 mb-6 space-y-1 text-sm text-[var(--text-secondary)]">
+        <p>Your agent will:</p>
+        <ul className="space-y-1">
+          <li>Check the market every 30 minutes</li>
+          {strategy !== "conservative" && <li>Trade on AVNU when the signal is strong</li>}
+          <li>Earn yield on Vesu</li>
+          <li>Pay $0.001 per decision (x402)</li>
+          <li>Never hold your key: you can stop it any time</li>
+        </ul>
+      </div>
 
-      {/* Hire button */}
+      {status && <p className="text-sm text-[var(--vela-blue)] text-center mb-4">{status}</p>}
+
       <button
         onClick={handleHire}
-        disabled={loading}
+        disabled={isRegistering || !wallet || !(maxTradeUsd >= 0.5)}
         className="w-full py-4 rounded-xl bg-[var(--vela-blue)] text-[var(--bg-primary)] font-semibold text-lg hover:brightness-110 transition-all disabled:opacity-50"
       >
-        {isCreating
-          ? "Creating session..."
-          : isRegistering
-            ? "Registering on-chain..."
-            : "Hire Agent"}
+        {isRegistering ? "Waiting for your passkey…" : "Hire agent"}
       </button>
 
       {error && <p className="mt-3 text-sm text-[var(--vela-red)] text-center">{error}</p>}

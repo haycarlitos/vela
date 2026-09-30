@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useCallback, useSyncExternalStore, type ReactNode } from "react";
 
 type Theme = "dark" | "light";
 
@@ -14,24 +14,30 @@ const ThemeContext = createContext<ThemeContextValue>({
   toggleTheme: () => {},
 });
 
+const STORAGE_KEY = "vela-theme";
+const listeners = new Set<() => void>();
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function readTheme(): Theme {
+  return localStorage.getItem(STORAGE_KEY) === "light" ? "light" : "dark";
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("dark");
+  // The stored preference is external state: read it without a setState-in-effect,
+  // and render "dark" on the server.
+  const theme = useSyncExternalStore(subscribe, readTheme, () => "dark" as Theme);
 
   useEffect(() => {
-    const stored = localStorage.getItem("vela-theme") as Theme | null;
-    if (stored === "light" || stored === "dark") {
-      setTheme(stored);
-      document.documentElement.setAttribute("data-theme", stored);
-    }
-  }, []);
+    document.documentElement.setAttribute("data-theme", theme);
+  }, [theme]);
 
   const toggleTheme = useCallback(() => {
-    setTheme((prev) => {
-      const next = prev === "dark" ? "light" : "dark";
-      localStorage.setItem("vela-theme", next);
-      document.documentElement.setAttribute("data-theme", next);
-      return next;
-    });
+    localStorage.setItem(STORAGE_KEY, readTheme() === "dark" ? "light" : "dark");
+    listeners.forEach((listener) => listener());
   }, []);
 
   return (

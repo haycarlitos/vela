@@ -144,7 +144,7 @@ function TierSection() {
             </ul>
 
             <Link
-              href={`/dashboard?tier=${tier.slug}`}
+              href={`/demo?tier=${tier.slug}`}
               className={`${tier.highlight ? "bg-gradient-to-r from-[#44E1B4] to-[#2BC2AE] text-[var(--ocean-deep)]" : "glass"} text-center py-2.5 rounded-full text-sm font-medium hover:brightness-110 transition-all`}
             >
               {tier.cta}
@@ -432,7 +432,7 @@ export default function Home() {
           className="flex flex-col sm:flex-row gap-4 relative z-10"
         >
           <Link
-            href="/dashboard?tier=sailor"
+            href="/onboarding"
             className="glass-liquid px-8 py-3 rounded-full font-medium text-[var(--text-primary)] hover:brightness-110 transition-all duration-300 text-center"
           >
             Start Free
@@ -476,7 +476,7 @@ export default function Home() {
         </motion.h2>
         <p className="text-[var(--text-secondary)] mb-8">Start free. Upgrade anytime.</p>
         <Link
-          href="/dashboard?tier=sailor"
+          href="/onboarding"
           className="glass-liquid inline-block px-10 py-4 rounded-full font-medium text-lg text-[var(--text-primary)] hover:brightness-110 transition-all duration-300"
         >
           Start Free

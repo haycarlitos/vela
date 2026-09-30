@@ -9,7 +9,8 @@ interface PortfolioCardProps {
     eth: { balance: number; usd: number; price: number };
     strk: { balance: number; usd: number; price: number };
     vesuDeposited: number;
-    vesuApy: number;
+    /** Omitted when unknown. */
+    vesuApy?: number;
   };
 }
 
@@ -29,7 +30,7 @@ const springEntrance = {
 export function PortfolioCard({ portfolio }: PortfolioCardProps) {
   const rows = [
     { label: "USDC (liquid)", value: portfolio.usdc.usd, sub: null, color: tokenColors.usdc },
-    { label: "USDC (Vesu)", value: portfolio.vesuDeposited, sub: `${portfolio.vesuApy.toFixed(1)}% APY`, color: tokenColors.vesu },
+    { label: "USDC (Vesu)", value: portfolio.vesuDeposited, sub: portfolio.vesuApy === undefined ? null : `${portfolio.vesuApy.toFixed(1)}% APY`, color: tokenColors.vesu },
     { label: "ETH", value: portfolio.eth.usd, sub: portfolio.eth.balance.toFixed(6), color: tokenColors.eth },
     { label: "STRK", value: portfolio.strk.usd, sub: portfolio.strk.balance.toFixed(4), color: tokenColors.strk },
   ];
