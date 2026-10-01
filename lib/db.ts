@@ -13,6 +13,19 @@ let schemaReady: Promise<void> | null = null;
 /** Idempotent. Runs once per process, on first use; there is no public init route. */
 function ensureSchema(): Promise<void> {
   schemaReady ??= (async () => {
+    // The first Vela kept a `decisions` table with no user_id. CREATE TABLE IF
+    // NOT EXISTS would keep it and the index below would fail, so move it aside
+    // (kept as decisions_v0, nothing is deleted).
+    await pool.query(`
+      DO $$ BEGIN
+        IF to_regclass('decisions') IS NOT NULL AND NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = current_schema() AND table_name = 'decisions' AND column_name = 'user_id'
+        ) THEN
+          ALTER TABLE decisions RENAME TO decisions_v0;
+        END IF;
+      END $$;
+    `);
     await pool.query(`
       CREATE TABLE IF NOT EXISTS agents (
         user_id TEXT PRIMARY KEY,
