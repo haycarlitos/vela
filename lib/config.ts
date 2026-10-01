@@ -44,11 +44,20 @@ export const MIN_TRADE_USD = 0.5;
  * The most a wallet may hold while the agent runs (USD). A safety limit while
  * the SHHH wallet audit is pending; set MAX_DEPOSIT_USD to change it.
  */
-export const MAX_DEPOSIT_USD = Number(process.env.MAX_DEPOSIT_USD ?? 100);
+export const MAX_DEPOSIT_USD = positiveEnv("MAX_DEPOSIT_USD", 100);
 
 /**
  * How often each agent decides (minutes). Vercel Hobby runs `vercel.json`'s
  * cron once a day; with any external scheduler you can go down to minutes.
  * /api/tick is public, so this, not the scheduler, is the real limit.
  */
-export const TICK_INTERVAL_MINUTES = Number(process.env.TICK_INTERVAL_MINUTES ?? 24 * 60);
+export const TICK_INTERVAL_MINUTES = positiveEnv("TICK_INTERVAL_MINUTES", 24 * 60);
+
+/** A typo must not silently turn a limit off (NaN compares false with everything). */
+function positiveEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw === undefined || raw === "") return fallback;
+  const value = Number(raw);
+  if (!(value > 0)) throw new Error(`${name} must be a positive number, got "${raw}"`);
+  return value;
+}
