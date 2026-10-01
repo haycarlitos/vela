@@ -1,0 +1,7 @@
+# sncast settings for deploying the router to mainnet (see README.md).
+[sncast.default]
+url = "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10"
+account = "deployer"
+wait-params = { timeout = 300, retry-interval = 10 }
+block-explorer = "Voyager"
+show-explorer-links = true
