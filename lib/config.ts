@@ -40,6 +40,9 @@ export const SESSION_ENTRYPOINTS = ["approve", "multi_route_swap", "deposit", "w
 /** Never trade less than this: fees and slippage eat it. */
 export const MIN_TRADE_USD = 0.5;
 
+/** Onboarding asks for at least this much before hiring: room for a couple of minimum trades. */
+export const MIN_FUNDING_USD = 1;
+
 /**
  * The most a wallet may hold while the agent runs (USD). A safety limit while
  * the SHHH wallet audit is pending; set MAX_DEPOSIT_USD to change it.
