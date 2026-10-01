@@ -1,19 +1,17 @@
 import "server-only";
 import { waitForTransaction, type SessionKeyData } from "@chipi-stack/backend";
 import type { Call } from "starknet";
-import { chipi, sessionSecret, treasuryAddress } from "./chipi";
-import { THINK_PRICE_BASE_UNITS } from "./config";
+import { chipi, sessionSecret } from "./chipi";
 import { logDecision, setAgentActive, type AgentRow } from "./db";
 import { think } from "./brain";
 import { decide, usdToBaseUnits, type Action } from "./policy";
-import { getPortfolio } from "./portfolio";
-import { verifyThinkPayment } from "./payments";
+import { getPortfolio, totalUsd } from "./portfolio";
+import { MAX_DEPOSIT_USD } from "./config";
 import { vesuDepositCalls, vesuWithdrawCalls } from "./vesu";
-import { paymentCall } from "./x402";
 
 export interface TickResult {
   userId: string;
-  outcome: "stopped" | "skipped" | "hold" | "executed" | "failed";
+  outcome: "stopped" | "hold" | "executed" | "failed";
   detail: string;
   txHash?: string;
 }
@@ -28,8 +26,8 @@ function sessionOf(agent: AgentRow): SessionKeyData {
 
 /**
  * One cycle for one agent:
- *   session live? → portfolio → pay for the decision (x402, verified on-chain)
- *   → think → policy → execute with the session key → wait for the receipt.
+ *   session live? → portfolio → think → policy → execute with the session key
+ *   → wait for the receipt.
  *
  * The agent only ever signs with its session key. Everything it can do is
  * bounded on-chain by the session's whitelist and spending policies.
@@ -58,38 +56,36 @@ export async function runTick(agent: AgentRow): Promise<TickResult> {
 
   // 2. Portfolio
   const { portfolio, prices } = await getPortfolio(wallet.publicKey);
-  const priceUsd = Number(THINK_PRICE_BASE_UNITS) / 1e6;
-  if (portfolio.USDC.usd < priceUsd) {
-    return { userId, outcome: "skipped", detail: "not enough USDC to pay for a decision" };
+  if (totalUsd(portfolio) > MAX_DEPOSIT_USD) {
+    // Checked at hire time too, but the user can deposit more later.
+    const reason = `The wallet holds more than $${MAX_DEPOSIT_USD} (MAX_DEPOSIT_USD): the agent waits`;
+    await logDecision({ userId, kind: "hold", reason });
+    return { userId, outcome: "hold", detail: reason };
   }
 
-  // 3. Pay for the decision with the session key, and verify it like any other payer.
-  const paymentTx = await sdk.executeTransactionWithSession({
-    params: { encryptKey: sessionSecret(), wallet, session, calls: [paymentCall(treasuryAddress())] },
-  });
-  const payment = await verifyThinkPayment({ transactionHash: paymentTx, from: wallet.publicKey });
-  if (!payment.valid) {
-    await logDecision({ userId, kind: "failed", reason: `Payment rejected: ${payment.reason}`, paymentTxHash: paymentTx });
-    return { userId, outcome: "failed", detail: `payment ${payment.reason}`, txHash: paymentTx };
-  }
-
-  // 4. Think, then let the policy decide.
+  // 3. Think, then let the policy decide.
   const strategy = agent.strategy;
   const maxTradeUsd = Number(agent.max_trade_usd);
   const { decision, cost } = await think(portfolio, strategy, maxTradeUsd);
   const action = decide(decision, portfolio, { strategy, maxTradeUsd });
 
   if (action.kind === "hold") {
-    await logDecision({ userId, kind: "hold", reason: action.reason, paymentTxHash: paymentTx, aiCostUsd: cost.charged });
+    await logDecision({ userId, kind: "hold", reason: action.reason, aiCostUsd: cost.charged });
     return { userId, outcome: "hold", detail: action.reason };
   }
 
-  // 5. Execute with the session key and wait for the receipt: a hash is not a result.
+  // 4. Execute with the session key and wait for the receipt: a hash is not a result.
   const calls = await callsFor(action, wallet.publicKey, prices.USDC);
   const txHash = await sdk.executeTransactionWithSession({
     params: { encryptKey: sessionSecret(), wallet, session, calls },
   });
-  const receipt = await waitForTransaction(txHash, { timeoutMs: 120_000 });
+  const receipt = await waitForTransaction(txHash, { timeoutMs: 120_000 }).catch(async (err: unknown) => {
+    // Sent, but no receipt yet: record the hash anyway, so the trade is never invisible.
+    const detail = `No receipt after 2 minutes: ${err instanceof Error ? err.message : String(err)}`;
+    await logDecision({ userId, kind: action.kind, amountUsd: action.amountUsd, reason: detail, txHash, aiCostUsd: cost.charged });
+    return null;
+  });
+  if (!receipt) return { userId, outcome: "failed", detail: "no receipt yet", txHash };
 
   await logDecision({
     userId,
@@ -100,7 +96,6 @@ export async function runTick(agent: AgentRow): Promise<TickResult> {
     reason: receipt.success ? action.reason : `Reverted: ${receipt.revertReason ?? "unknown"}`,
     txHash,
     success: receipt.success,
-    paymentTxHash: paymentTx,
     aiCostUsd: cost.charged,
   });
   return {

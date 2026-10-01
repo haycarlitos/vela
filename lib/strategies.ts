@@ -27,5 +27,5 @@ export const STRATEGIES: Record<
 };
 
 export function isStrategy(value: unknown): value is Strategy {
-  return typeof value === "string" && value in STRATEGIES;
+  return typeof value === "string" && Object.hasOwn(STRATEGIES, value);
 }

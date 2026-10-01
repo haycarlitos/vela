@@ -3,8 +3,8 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "Vela — Set sail. Let AI navigate.",
-  description: "Autonomous DeFi agent powered by Chipi Pay. Hire an AI to manage your portfolio while you sleep.",
+  title: "Vela: learn blockchain and AI by building an agent",
+  description: "Open-source course: a self-custodial Starknet wallet, an AI agent with capped session keys, built with Chipi.",
   icons: {
     icon: "/favicon.ico",
     apple: "/apple-touch-icon.png",

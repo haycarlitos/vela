@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useAuth } from "@clerk/nextjs";
 import { getWalletEncryptKey, useChipiSession, useChipiWallet } from "@chipi-stack/nextjs";
 import { AgentStatus } from "@/components/dashboard/agent-status";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { PortfolioCard } from "@/components/dashboard/portfolio-card";
 import { StopAgent } from "@/components/dashboard/stop-agent";
 import { useAgentState, type AgentState } from "@/lib/use-agent-state";
+import { authClient, getChipiToken } from "@/lib/auth-client";
 
 const ACTION_NAMES: Record<string, string> = { supply: "supply_vesu", withdraw: "withdraw_vesu" };
 
@@ -21,7 +21,7 @@ function feed(decisions: NonNullable<AgentState["decisions"]>) {
     amountUsd: d.amountUsd,
     reasoning: d.reason,
     txHash: d.txHash,
-    outcome: "open",
+    outcome: d.success === false ? "failed" : "open",
   }));
 }
 
@@ -34,18 +34,29 @@ function timeLeft(validUntil: number): string {
 }
 
 export default function DashboardPage() {
-  const { userId, getToken } = useAuth();
-  const { state, error, refresh } = useAgentState();
+  const { data: session, isPending } = authClient.useSession();
+  const userId = session?.user.id;
+  const { state, error, refresh } = useAgentState(20_000, Boolean(userId));
   const [stopError, setStopError] = useState<string | null>(null);
 
-  const { wallet } = useChipiWallet({ externalUserId: userId ?? null, getBearerToken: getToken });
+  const { wallet } = useChipiWallet({ externalUserId: userId ?? null, getBearerToken: getChipiToken });
   const { revokeSession } = useChipiSession({
     wallet,
-    getEncryptKey: () => getWalletEncryptKey(),
-    getBearerToken: () => getToken({ skipCache: true }),
+    getEncryptKey: () =>
+      getWalletEncryptKey(wallet?.credentialId ?? undefined, { prfSupported: wallet?.prfSupported ?? undefined }),
+    getBearerToken: getChipiToken,
     autoCheckStatus: false,
   });
 
+  if (!isPending && !userId) {
+    return (
+      <Centered>
+        <Link href="/onboarding" className="text-[var(--vela-blue)] hover:underline">
+          Sign in with your passkey
+        </Link>
+      </Centered>
+    );
+  }
   if (error) return <Centered>{error}</Centered>;
   if (!state) return <Centered>Loading…</Centered>;
   if (!state.wallet || !state.agent) {
@@ -61,7 +72,7 @@ export default function DashboardPage() {
   const agent = state.agent;
   const active = agent.active && Boolean(state.session?.isActive);
   const decisions = state.decisions ?? [];
-  const paid = decisions.filter((d) => d.paymentTxHash).length * 0.001;
+  const aiCostUsd = decisions.reduce((sum, d) => sum + (d.aiCostUsd ?? 0), 0);
 
   const stop = async () => {
     setStopError(null);
@@ -91,13 +102,13 @@ export default function DashboardPage() {
       </header>
 
       <p className="text-xs text-[var(--vela-gold)]">
-        Beta: the wallet contract (SHHH V8.4) is pending its external audit. Keep at most ${state.depositCapUsd} in it.
+        The wallet contract (SHHH V8.4) is pending its external audit. Keep at most ${state.depositCapUsd} in it.
       </p>
 
       <AgentStatus
         totalValueUsd={state.totalUsd ?? 0}
         totalDecisions={decisions.length}
-        totalX402Spent={paid}
+        aiCostUsd={aiCostUsd}
         sessionRemaining={
           active && state.session
             ? `${timeLeft(state.session.validUntil)} · ${state.session.remainingCalls} calls`

@@ -13,7 +13,7 @@ import {
   TOKEN_DECIMALS,
   TOKENS,
   VESU_USDC_POSITION,
-  X402_RESERVE_USD,
+  VESU_USDC_VAULT,
   type TokenSymbol,
 } from "./config";
 import { STRATEGIES, type Strategy } from "./strategies";
@@ -82,7 +82,7 @@ export function decide(decision: unknown, portfolio: Portfolio, limits: Limits):
 
   if (decision.action === "supply") {
     if (!isVesuUsdc(decision.to)) return hold(`Supplying to ${decision.to ?? "?"} is not supported`);
-    const amountUsd = floorCents(Math.min(cap, portfolio.USDC.usd - X402_RESERVE_USD));
+    const amountUsd = floorCents(Math.min(cap, portfolio.USDC.usd));
     if (amountUsd < MIN_TRADE_USD) return hold("Not enough liquid USDC to supply");
     return { kind: "supply", amountUsd, reason: decision.reason };
   }
@@ -101,8 +101,7 @@ export function decide(decision: unknown, portfolio: Portfolio, limits: Limits):
   const to = symbol(decision.to);
   if (!from || !to) return hold(`Vela does not trade ${decision.from ?? "?"} -> ${decision.to ?? "?"}`);
   if (from === to) return hold("Swap with the same token on both sides");
-  const spendable = portfolio[from].usd - (from === "USDC" ? X402_RESERVE_USD : 0);
-  const amountUsd = floorCents(Math.min(cap, spendable));
+  const amountUsd = floorCents(Math.min(cap, portfolio[from].usd));
   if (amountUsd < MIN_TRADE_USD) return hold(`Not enough ${from} to swap`);
   return { kind: "swap", from, to, amountUsd, reason: decision.reason };
 }
@@ -119,22 +118,31 @@ export function usdToBaseUnits(amountUsd: number, token: TokenSymbol, priceUsd: 
 
 const DAY = 86_400;
 
+/** Every token the agent wallet can hold, Vesu's vault shares included. Each one gets a cap. */
+export const CAPPED_TOKENS = [...Object.values(TOKENS), VESU_USDC_VAULT];
+
 /**
  * On-chain caps for the session, one per token the wallet can hold.
  *
  * Per call: the user's max trade. Per day: four trades' worth. Prices are
  * read at hire time; ETH and STRK get 1.5x headroom so a normal price move
- * does not make a legal trade revert. maxPerWindow is always positive
- * (0 would mean no cap).
+ * does not make a legal trade revert, and USDC 1.05x so a USDC price a hair
+ * under $1 does not either. maxPerWindow is always positive (0 would mean no
+ * cap).
+ *
+ * The Vesu vault's shares are a token too, and `approve` is allowed on every
+ * contract: the agent never needs to approve them, so their cap is one base
+ * unit, as close to frozen as a positive cap gets.
  */
 export function spendingPolicies(
   maxTradeUsd: number,
   prices: Record<TokenSymbol, number>
 ): Array<{ token: string; maxPerCall: bigint; maxPerWindow: bigint; windowSeconds: number }> {
   if (!(maxTradeUsd >= MIN_TRADE_USD)) throw new Error(`maxTradeUsd must be at least ${MIN_TRADE_USD}`);
-  return (Object.keys(TOKENS) as TokenSymbol[]).map((token) => {
-    const headroom = token === "USDC" ? 1 : 1.5;
+  const tokens = (Object.keys(TOKENS) as TokenSymbol[]).map((token) => {
+    const headroom = token === "USDC" ? 1.05 : 1.5;
     const perCall = usdToBaseUnits(maxTradeUsd * headroom, token, token === "USDC" ? 1 : prices[token]);
     return { token: TOKENS[token], maxPerCall: perCall, maxPerWindow: perCall * 4n, windowSeconds: DAY };
   });
+  return [...tokens, { token: VESU_USDC_VAULT, maxPerCall: 1n, maxPerWindow: 1n, windowSeconds: DAY }];
 }

@@ -21,33 +21,43 @@ export const VESU_USDC_VAULT = "0x017891114c00b07317b9102adefbad9fd5de40c5616f09
 /** Name Vela and the AI API use for the Vesu USDC position. */
 export const VESU_USDC_POSITION = "vesu_usdc";
 
-/** Price of one decision on Vela's /api/think, paid in USDC base units ($0.001). */
-export const THINK_PRICE_BASE_UNITS = 1_000n;
-
 /** How long a hired agent's session lasts. */
 export const SESSION_SECONDS = 7 * 24 * 60 * 60;
 
-/**
- * Session-signed transactions allowed over the session. A tick pays for its
- * decision (1 call) and may trade (1 call): 48 ticks a day for 7 days, with room.
- */
+/** Session-signed transactions allowed over the session: one per trade, with room. */
 export const SESSION_MAX_CALLS = 1_000;
 
 /**
  * Functions the session key may call. The whitelist is not scoped to a
  * contract, so every token the wallet holds needs a spending policy
  * (see spendingPolicies in lib/policy.ts).
- * - approve / transfer: swaps, Vesu deposits and x402 payments
+ * - approve: swaps and Vesu deposits
  * - multi_route_swap: AVNU (the calls /v1/ai/execute returns)
  * - deposit / withdraw: the Vesu ERC-4626 vault
  */
-export const SESSION_ENTRYPOINTS = ["approve", "transfer", "multi_route_swap", "deposit", "withdraw"];
+export const SESSION_ENTRYPOINTS = ["approve", "multi_route_swap", "deposit", "withdraw"];
 
 /** Never trade less than this: fees and slippage eat it. */
 export const MIN_TRADE_USD = 0.5;
 
-/** USDC kept liquid so the agent can keep paying for its decisions. */
-export const X402_RESERVE_USD = 1;
+/**
+ * The most a wallet may hold while the agent runs (USD). A safety limit while
+ * the SHHH wallet audit is pending; set MAX_DEPOSIT_USD to change it.
+ */
+export const MAX_DEPOSIT_USD = positiveEnv("MAX_DEPOSIT_USD", 100);
 
-/** Beta: the most a wallet may hold while the agent runs. */
-export const BETA_DEPOSIT_CAP_USD = 100;
+/**
+ * How often each agent decides (minutes). Vercel Hobby runs `vercel.json`'s
+ * cron once a day; with any external scheduler you can go down to minutes.
+ * /api/tick is public, so this, not the scheduler, is the real limit.
+ */
+export const TICK_INTERVAL_MINUTES = positiveEnv("TICK_INTERVAL_MINUTES", 24 * 60);
+
+/** A typo must not silently turn a limit off (NaN compares false with everything). */
+function positiveEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw === undefined || raw === "") return fallback;
+  const value = Number(raw);
+  if (!(value > 0)) throw new Error(`${name} must be a positive number, got "${raw}"`);
+  return value;
+}

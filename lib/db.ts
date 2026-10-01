@@ -1,10 +1,9 @@
 import "server-only";
 import pg from "pg";
-import type { TxHashStore } from "@chipi-stack/backend";
 import type { Strategy } from "./strategies";
 
 // Any Postgres (Neon, Railway, Supabase, Vercel Postgres) via DATABASE_URL.
-const pool = new pg.Pool({
+export const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_SSL === "false" ? undefined : process.env.DATABASE_URL ? { rejectUnauthorized: false } : undefined,
 });
@@ -28,6 +27,7 @@ function ensureSchema(): Promise<void> {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
       CREATE INDEX IF NOT EXISTS agents_active ON agents (active) WHERE active;
+      ALTER TABLE agents ADD COLUMN IF NOT EXISTS last_tick_at TIMESTAMPTZ;
 
       CREATE TABLE IF NOT EXISTS decisions (
         id SERIAL PRIMARY KEY,
@@ -44,11 +44,6 @@ function ensureSchema(): Promise<void> {
         ai_cost_usd NUMERIC
       );
       CREATE INDEX IF NOT EXISTS decisions_user ON decisions (user_id, created_at DESC);
-
-      CREATE TABLE IF NOT EXISTS x402_payments (
-        tx_hash TEXT PRIMARY KEY,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
     `);
   })().catch((err) => {
     schemaReady = null;
@@ -124,17 +119,25 @@ export async function setAgentActive(userId: string, sessionPublicKey: string, a
   return (rowCount ?? 0) > 0;
 }
 
-/** Moves an agent to the back of the tick queue. */
-export async function touchAgent(userId: string): Promise<void> {
-  await query(`UPDATE agents SET updated_at = NOW() WHERE user_id = $1`, [userId]);
-}
-
-export async function listActiveAgents(limit: number): Promise<AgentRow[]> {
+/**
+ * Claims the active agent that waited longest, if its last tick is at least
+ * `minGapSeconds` old. Atomic: two concurrent callers never get the same agent,
+ * so /api/tick can be public and still runs each agent at most once per gap.
+ */
+export async function claimDueAgent(minGapSeconds: number): Promise<AgentRow | null> {
   const { rows } = await query<AgentRow>(
-    `SELECT * FROM agents WHERE active ORDER BY updated_at ASC LIMIT $1`,
-    [limit]
+    `UPDATE agents SET last_tick_at = NOW()
+     WHERE user_id = (
+       SELECT user_id FROM agents
+       WHERE active AND (last_tick_at IS NULL OR last_tick_at <= NOW() - make_interval(secs => $1))
+       ORDER BY last_tick_at ASC NULLS FIRST
+       LIMIT 1
+       FOR UPDATE SKIP LOCKED
+     )
+     RETURNING *`,
+    [minGapSeconds]
   );
-  return rows;
+  return rows[0] ?? null;
 }
 
 // ---------- decisions ----------
@@ -191,16 +194,3 @@ export async function recentDecisions(userId: string, limit = 30): Promise<Decis
   );
   return rows;
 }
-
-// ---------- x402 ----------
-
-/** Single use per payment transaction, enforced by the primary key (atomic across instances). */
-export const x402TxHashStore: TxHashStore = {
-  async consume(transactionHash: string): Promise<boolean> {
-    const { rowCount } = await query(
-      `INSERT INTO x402_payments (tx_hash) VALUES ($1) ON CONFLICT (tx_hash) DO NOTHING`,
-      [transactionHash]
-    );
-    return rowCount === 1;
-  },
-};

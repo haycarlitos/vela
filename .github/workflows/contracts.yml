@@ -1,0 +1,32 @@
+name: Contracts
+
+on:
+  push:
+    branches: [main]
+    paths: [contracts/**]
+  pull_request:
+    paths: [contracts/**]
+
+jobs:
+  vault-router:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts/vault-router
+    steps:
+      - uses: actions/checkout@v4
+      - uses: software-mansion/setup-scarb@v1
+        with:
+          scarb-version: "2.20.1"
+          scarb-lock: contracts/vault-router/Scarb.lock
+      - uses: foundry-rs/setup-snfoundry@v4
+        with:
+          starknet-foundry-version: "0.64.0"
+      # The fork tests read mainnet at a fixed block: cache that state.
+      - uses: actions/cache@v4
+        with:
+          path: contracts/vault-router/.snfoundry_cache
+          key: snfoundry-${{ hashFiles('contracts/vault-router/Scarb.toml') }}
+      - run: scarb fmt --check
+      # One test at a time: the public RPC limits requests per second.
+      - run: snforge test --max-threads 1

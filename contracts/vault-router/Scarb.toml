@@ -1,0 +1,29 @@
+[package]
+name = "vault_router"
+version = "0.1.0"
+edition = "2024_07"
+
+# See more keys and their definitions at https://docs.swmansion.com/scarb/docs/reference/manifest.html
+
+[dependencies]
+starknet = "2.20.0"
+
+[dev-dependencies]
+snforge_std = "0.64.0"
+assert_macros = "2.20.0"
+
+[[target.starknet-contract]]
+sierra = true
+casm = true
+
+[scripts]
+test = "snforge test"
+
+[tool.scarb]
+allow-prebuilt-plugins = ["snforge_std"]
+
+[[tool.snforge.fork]]
+name = "MAINNET"
+url = "https://api.zan.top/public/starknet-mainnet/rpc/v0_10"
+# A fixed block keeps the tests deterministic, and snforge caches its state.
+block_id.number = "15713492"

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { decide, spendingPolicies, usdToBaseUnits, type Portfolio } from "../policy";
-import { TOKENS } from "../config";
+import { CAPPED_TOKENS, decide, spendingPolicies, usdToBaseUnits, type Portfolio } from "../policy";
+import { TOKENS, VESU_USDC_VAULT } from "../config";
 
 const portfolio: Portfolio = {
   USDC: { balance: 40, usd: 40 },
@@ -34,16 +34,14 @@ describe("decide", () => {
     expect(action).toEqual({ kind: "swap", from: "USDC", to: "ETH", amountUsd: 5, reason: "dip" });
   });
 
-  it("keeps the x402 reserve in USDC", () => {
+  it("swaps at most the USDC the wallet holds", () => {
     const low = { ...portfolio, USDC: { balance: 3, usd: 3 } };
     expect(decide({ action: "swap", from: "USDC", to: "ETH", amount: 5, reason: "x" }, low, balanced)).toMatchObject({
       kind: "swap",
-      amountUsd: 2,
+      amountUsd: 3,
     });
-    const reserveOnly = { ...portfolio, USDC: { balance: 1.2, usd: 1.2 } };
-    expect(
-      decide({ action: "swap", from: "USDC", to: "ETH", amount: 5, reason: "x" }, reserveOnly, balanced)
-    ).toMatchObject({ kind: "hold" });
+    const dust = { ...portfolio, USDC: { balance: 0.2, usd: 0.2 } };
+    expect(decide({ action: "swap", from: "USDC", to: "ETH", amount: 5, reason: "x" }, dust, balanced)).toMatchObject({ kind: "hold" });
   });
 
   it("never swaps more than the wallet holds of the source token", () => {
@@ -74,10 +72,10 @@ describe("decide", () => {
     ).toMatchObject({ kind: "hold", reason: expect.stringContaining("conservative") });
   });
 
-  it("supplies USDC to Vesu, keeping the reserve", () => {
+  it("supplies USDC to Vesu, at most the liquid USDC", () => {
     expect(decide({ action: "supply", to: "vesu_usdc", amount: 50, reason: "7% APY" }, portfolio, { strategy: "conservative", maxTradeUsd: 100 })).toEqual({
       kind: "supply",
-      amountUsd: 39,
+      amountUsd: 40,
       reason: "7% APY",
     });
   });
@@ -112,11 +110,22 @@ describe("usdToBaseUnits", () => {
 describe("spendingPolicies", () => {
   const prices = { USDC: 1, ETH: 3000, STRK: 0.12 };
 
-  it("sets one policy per token, per call = max trade, per day = 4 trades", () => {
+  it("sets one policy per token the wallet can hold, per call = max trade, per day = 4 trades", () => {
     const policies = spendingPolicies(5, prices);
-    expect(policies.map((p) => p.token)).toEqual([TOKENS.USDC, TOKENS.ETH, TOKENS.STRK]);
+    expect(policies.map((p) => p.token)).toEqual([TOKENS.USDC, TOKENS.ETH, TOKENS.STRK, VESU_USDC_VAULT]);
+    expect(policies.map((p) => p.token)).toEqual(CAPPED_TOKENS);
     const usdc = policies[0];
-    expect(usdc).toEqual({ token: TOKENS.USDC, maxPerCall: 5_000_000n, maxPerWindow: 20_000_000n, windowSeconds: 86_400 });
+    expect(usdc).toEqual({ token: TOKENS.USDC, maxPerCall: 5_250_000n, maxPerWindow: 21_000_000n, windowSeconds: 86_400 });
+  });
+
+  it("keeps a full-size USDC trade under the cap when USDC is a hair under $1", () => {
+    const [usdc] = spendingPolicies(5, prices);
+    expect(usdToBaseUnits(5, "USDC", 0.9995)).toBeLessThanOrEqual(usdc.maxPerCall);
+  });
+
+  it("all but freezes the Vesu vault shares, which approve could otherwise hand away", () => {
+    const shares = spendingPolicies(5, prices)[3];
+    expect(shares).toEqual({ token: VESU_USDC_VAULT, maxPerCall: 1n, maxPerWindow: 1n, windowSeconds: 86_400 });
   });
 
   it("gives volatile tokens 1.5x headroom and never a zero window cap", () => {
