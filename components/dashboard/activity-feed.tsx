@@ -18,6 +18,7 @@ interface ActivityFeedProps {
 }
 
 function getActionColor(action: string, outcome: string): string {
+  if (outcome === "failed") return "text-[var(--vela-red)]";
   if (action === "hold") return "text-[var(--text-muted)]";
   if (action === "supply_vesu" || action === "withdraw_vesu") return "text-[var(--vela-blue)]";
   if (outcome === "profit") return "text-[var(--vela-green)]";
@@ -26,6 +27,7 @@ function getActionColor(action: string, outcome: string): string {
 }
 
 function getBorderClass(action: string, outcome: string): string {
+  if (outcome === "failed") return "glass-loss";
   if (action === "hold") return "glass-hold";
   if (action === "supply_vesu" || action === "withdraw_vesu") return "glass-supply";
   if (outcome === "profit") return "glass-profit";
@@ -99,7 +101,7 @@ export function ActivityFeed({ decisions }: ActivityFeedProps) {
                       ${d.amountUsd.toFixed(2)}
                     </span>
                   )}
-                  {d.outcome !== "open" && d.action === "swap" && (
+                  {(d.outcome === "failed" || (d.outcome !== "open" && d.action === "swap")) && (
                     <span
                       className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                         d.outcome === "profit"

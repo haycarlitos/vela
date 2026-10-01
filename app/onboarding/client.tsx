@@ -17,7 +17,7 @@ export default function OnboardingClient() {
   const userId = session?.user.id;
   const { state, error, refresh } = useAgentState(15_000, Boolean(userId));
 
-  const step = !userId ? 0 : !state?.wallet ? 1 : (state.portfolio?.USDC.usd ?? 0) < 5 ? 2 : 3;
+  const step = !userId ? 0 : !state?.wallet ? 1 : (state.totalUsd ?? 0) < 5 ? 2 : 3;
 
   return (
     <div className="min-h-screen flex flex-col">

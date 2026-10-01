@@ -21,7 +21,7 @@ function feed(decisions: NonNullable<AgentState["decisions"]>) {
     amountUsd: d.amountUsd,
     reasoning: d.reason,
     txHash: d.txHash,
-    outcome: "open",
+    outcome: d.success === false ? "failed" : "open",
   }));
 }
 

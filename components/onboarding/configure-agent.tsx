@@ -130,7 +130,7 @@ export function ConfigureAgent({ balanceUsd, onHired }: ConfigureAgentProps) {
       <div className="glass p-4 mb-6 space-y-1 text-sm text-[var(--text-secondary)]">
         <p>Your agent will:</p>
         <ul className="space-y-1">
-          <li>Check the market every 30 minutes</li>
+          <li>Check the market once a day (or as often as you schedule it)</li>
           {strategy !== "conservative" && <li>Trade on AVNU when the signal is strong</li>}
           <li>Earn yield on Vesu</li>
           <li>Never hold your key: you can stop it any time</li>

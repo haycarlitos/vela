@@ -5,7 +5,8 @@ import { chipi, sessionSecret } from "./chipi";
 import { logDecision, setAgentActive, type AgentRow } from "./db";
 import { think } from "./brain";
 import { decide, usdToBaseUnits, type Action } from "./policy";
-import { getPortfolio } from "./portfolio";
+import { getPortfolio, totalUsd } from "./portfolio";
+import { MAX_DEPOSIT_USD } from "./config";
 import { vesuDepositCalls, vesuWithdrawCalls } from "./vesu";
 
 export interface TickResult {
@@ -55,6 +56,12 @@ export async function runTick(agent: AgentRow): Promise<TickResult> {
 
   // 2. Portfolio
   const { portfolio, prices } = await getPortfolio(wallet.publicKey);
+  if (totalUsd(portfolio) > MAX_DEPOSIT_USD) {
+    // Checked at hire time too, but the user can deposit more later.
+    const reason = `The wallet holds more than $${MAX_DEPOSIT_USD} (MAX_DEPOSIT_USD): the agent waits`;
+    await logDecision({ userId, kind: "hold", reason });
+    return { userId, outcome: "hold", detail: reason };
+  }
 
   // 3. Think, then let the policy decide.
   const strategy = agent.strategy;
@@ -72,7 +79,13 @@ export async function runTick(agent: AgentRow): Promise<TickResult> {
   const txHash = await sdk.executeTransactionWithSession({
     params: { encryptKey: sessionSecret(), wallet, session, calls },
   });
-  const receipt = await waitForTransaction(txHash, { timeoutMs: 120_000 });
+  const receipt = await waitForTransaction(txHash, { timeoutMs: 120_000 }).catch(async (err: unknown) => {
+    // Sent, but no receipt yet: record the hash anyway, so the trade is never invisible.
+    const detail = `No receipt after 2 minutes: ${err instanceof Error ? err.message : String(err)}`;
+    await logDecision({ userId, kind: action.kind, amountUsd: action.amountUsd, reason: detail, txHash, aiCostUsd: cost.charged });
+    return null;
+  });
+  if (!receipt) return { userId, outcome: "failed", detail: "no receipt yet", txHash };
 
   await logDecision({
     userId,

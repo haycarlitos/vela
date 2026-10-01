@@ -10,7 +10,7 @@ import {
   SESSION_SECONDS,
 } from "@/lib/config";
 import { getAgent, recentDecisions, setAgentActive, upsertPendingAgent } from "@/lib/db";
-import { isStrategy, spendingPolicies } from "@/lib/policy";
+import { CAPPED_TOKENS, isStrategy, spendingPolicies } from "@/lib/policy";
 import { getPortfolio, totalUsd } from "@/lib/portfolio";
 
 export const dynamic = "force-dynamic";
@@ -178,6 +178,14 @@ export async function PATCH(req: Request) {
     sessionPublicKey,
   });
   if (!onChain.isActive) return NextResponse.json({ error: "session is not active on-chain" }, { status: 409 });
+
+  // Every token the wallet can hold must be capped on-chain (a window of 0 means no cap).
+  for (const token of CAPPED_TOKENS) {
+    const policy = await chipi().sessions.getSpendingPolicy({ walletAddress: agent.wallet_address, sessionPublicKey, token });
+    if (policy.maxPerWindow === 0n) {
+      return NextResponse.json({ error: `the session has no spending cap for ${token}` }, { status: 409 });
+    }
+  }
 
   await setAgentActive(userId, sessionPublicKey, true);
   return NextResponse.json({ active: true, session: onChain });

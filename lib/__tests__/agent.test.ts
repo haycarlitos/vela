@@ -18,7 +18,7 @@ vi.mock("../db", () => ({
   logDecision: vi.fn(async () => {}),
   setAgentActive: vi.fn(async () => true),
 }));
-vi.mock("../portfolio", () => ({ getPortfolio: vi.fn() }));
+vi.mock("../portfolio", async (orig) => ({ ...(await orig<typeof import("../portfolio")>()), getPortfolio: vi.fn() }));
 vi.mock("../brain", () => ({ think: vi.fn() }));
 vi.mock("@chipi-stack/backend", async (orig) => ({
   ...(await orig<typeof import("@chipi-stack/backend")>()),
@@ -90,6 +90,25 @@ describe("runTick", () => {
     sdk.getWallet.mockResolvedValue({ ...WALLET, publicKey: "0xdef" });
     expect((await runTick(agent)).outcome).toBe("stopped");
     expect(sdk.executeTransactionWithSession).not.toHaveBeenCalled();
+  });
+
+  it("waits, without thinking, when the wallet grew past MAX_DEPOSIT_USD after hiring", async () => {
+    vi.mocked(getPortfolio).mockResolvedValue({ portfolio: { ...portfolio, USDC: { balance: 500, usd: 500 } }, prices: { USDC: 1, ETH: 3000, STRK: 0.12 } });
+    const result = await runTick(agent);
+    expect(result.outcome).toBe("hold");
+    expect(think).not.toHaveBeenCalled();
+    expect(sdk.executeTransactionWithSession).not.toHaveBeenCalled();
+  });
+
+  it("records the hash of a trade whose receipt does not arrive", async () => {
+    vi.mocked(think).mockResolvedValue({
+      decision: { action: "supply", to: "vesu_usdc", amount: 3, reason: "yield" },
+      cost: { charged: 0.001, currency: "USD" },
+    } as never);
+    vi.mocked(waitForTransaction).mockRejectedValue(new Error("timeout"));
+    const result = await runTick(agent);
+    expect(result).toMatchObject({ outcome: "failed", txHash: "0xtrade" });
+    expect(logDecision).toHaveBeenLastCalledWith(expect.objectContaining({ kind: "supply", txHash: "0xtrade", reason: expect.stringContaining("No receipt") }));
   });
 
   it("signs trades with the session key only", async () => {
