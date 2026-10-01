@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth, useUser } from "@clerk/nextjs";
-import { Chain, createWalletPasskey, PrfUnsupportedError, useCreateWallet } from "@chipi-stack/nextjs";
+import { Chain, useCreateWallet } from "@chipi-stack/nextjs";
 import { motion } from "framer-motion";
+import { getChipiToken } from "@/lib/auth-client";
 
 interface CreateWalletProps {
   userId: string;
@@ -15,30 +15,26 @@ interface CreateWalletProps {
  * secret, so neither Chipi nor Vela can decrypt it.
  */
 export function CreateWallet({ userId, onCreated }: CreateWalletProps) {
-  const { getToken } = useAuth();
-  const { user } = useUser();
   const { createWalletAsync, isLoading } = useCreateWallet();
   const [error, setError] = useState<string | null>(null);
 
   const handleCreate = async () => {
     setError(null);
     try {
-      // Face ID / fingerprint. Requires WebAuthn PRF: without it the wallet
-      // would be custodial, so the SDK throws PrfUnsupportedError instead.
-      const name = user?.primaryEmailAddress?.emailAddress ?? userId;
-      const { encryptKey } = await createWalletPasskey(userId, name);
-
-      // Token after the prompt: one fetched before it can expire on the biometric sheet.
-      const bearerToken = await getToken({ skipCache: true });
+      const bearerToken = await getChipiToken();
       if (!bearerToken) throw new Error("Your session expired. Sign in again.");
 
+      // Face ID / fingerprint: a passkey for this wallet. Chipi stores its
+      // credential id, so any device with the passkey can open the wallet.
+      // Requires WebAuthn PRF: without it the wallet would be custodial, so
+      // the SDK refuses (PRF_UNSUPPORTED) instead.
       await createWalletAsync({
-        params: { encryptKey, externalUserId: userId, chain: Chain.STARKNET, walletType: "SHHH" },
+        params: { externalUserId: userId, chain: Chain.STARKNET, walletType: "SHHH", usePasskey: true },
         bearerToken,
       });
       onCreated();
     } catch (err) {
-      if (err instanceof PrfUnsupportedError) {
+      if ((err as { code?: string }).code === "PRF_UNSUPPORTED") {
         setError(
           "This device can't secure a wallet. Use a recent iPhone or Android, or a password manager with passkeys."
         );

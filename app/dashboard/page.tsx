@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useAuth } from "@clerk/nextjs";
 import { getWalletEncryptKey, useChipiSession, useChipiWallet } from "@chipi-stack/nextjs";
 import { AgentStatus } from "@/components/dashboard/agent-status";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { PortfolioCard } from "@/components/dashboard/portfolio-card";
 import { StopAgent } from "@/components/dashboard/stop-agent";
 import { useAgentState, type AgentState } from "@/lib/use-agent-state";
+import { authClient, getChipiToken } from "@/lib/auth-client";
 
 const ACTION_NAMES: Record<string, string> = { supply: "supply_vesu", withdraw: "withdraw_vesu" };
 
@@ -34,18 +34,29 @@ function timeLeft(validUntil: number): string {
 }
 
 export default function DashboardPage() {
-  const { userId, getToken } = useAuth();
-  const { state, error, refresh } = useAgentState();
+  const { data: session, isPending } = authClient.useSession();
+  const userId = session?.user.id;
+  const { state, error, refresh } = useAgentState(20_000, Boolean(userId));
   const [stopError, setStopError] = useState<string | null>(null);
 
-  const { wallet } = useChipiWallet({ externalUserId: userId ?? null, getBearerToken: getToken });
+  const { wallet } = useChipiWallet({ externalUserId: userId ?? null, getBearerToken: getChipiToken });
   const { revokeSession } = useChipiSession({
     wallet,
-    getEncryptKey: () => getWalletEncryptKey(),
-    getBearerToken: () => getToken({ skipCache: true }),
+    getEncryptKey: () =>
+      getWalletEncryptKey(wallet?.credentialId ?? undefined, { prfSupported: wallet?.prfSupported ?? undefined }),
+    getBearerToken: getChipiToken,
     autoCheckStatus: false,
   });
 
+  if (!isPending && !userId) {
+    return (
+      <Centered>
+        <Link href="/onboarding" className="text-[var(--vela-blue)] hover:underline">
+          Sign in with your passkey
+        </Link>
+      </Centered>
+    );
+  }
   if (error) return <Centered>{error}</Centered>;
   if (!state) return <Centered>Loading…</Centered>;
   if (!state.wallet || !state.agent) {

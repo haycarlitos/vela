@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { currentUserId } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { waitForTransaction } from "@chipi-stack/backend";
 import { chipi, sessionSecret } from "@/lib/chipi";
@@ -24,7 +24,7 @@ async function userWallet(userId: string) {
 
 /** GET: the signed-in user's wallet, portfolio, agent and recent decisions. */
 export async function GET() {
-  const { userId } = await auth();
+  const userId = await currentUserId();
   if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const wallet = await userWallet(userId);
@@ -79,7 +79,7 @@ export async function GET() {
  * Nothing is on-chain yet; the agent stays inactive until PATCH confirms it.
  */
 export async function POST(req: Request) {
-  const { userId } = await auth();
+  const userId = await currentUserId();
   if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const body = (await req.json().catch(() => null)) as { strategy?: unknown; maxTradeUsd?: unknown } | null;
@@ -144,7 +144,7 @@ export async function POST(req: Request) {
  * chain itself: the browser's word is not enough.
  */
 export async function PATCH(req: Request) {
-  const { userId } = await auth();
+  const userId = await currentUserId();
   if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const body = (await req.json().catch(() => null)) as {

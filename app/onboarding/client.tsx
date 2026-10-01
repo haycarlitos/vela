@@ -2,20 +2,22 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@clerk/nextjs";
+import { CreateAccount } from "@/components/onboarding/create-account";
 import { CreateWallet } from "@/components/onboarding/create-wallet";
 import { FundWallet } from "@/components/onboarding/fund-wallet";
 import { ConfigureAgent } from "@/components/onboarding/configure-agent";
 import { useAgentState } from "@/lib/use-agent-state";
+import { authClient } from "@/lib/auth-client";
 
-const STEPS = ["Wallet", "Fund", "Hire"] as const;
+const STEPS = ["Account", "Wallet", "Fund", "Hire"] as const;
 
 export default function OnboardingClient() {
   const router = useRouter();
-  const { userId } = useAuth();
-  const { state, error, refresh } = useAgentState(15_000);
+  const { data: session, isPending } = authClient.useSession();
+  const userId = session?.user.id;
+  const { state, error, refresh } = useAgentState(15_000, Boolean(userId));
 
-  const step = !state?.wallet ? 0 : (state.portfolio?.USDC.usd ?? 0) < 5 ? 1 : 2;
+  const step = !userId ? 0 : !state?.wallet ? 1 : (state.portfolio?.USDC.usd ?? 0) < 5 ? 2 : 3;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -40,12 +42,15 @@ export default function OnboardingClient() {
       </header>
 
       <main className="flex-1 flex items-center justify-center px-4 py-12">
-        {!state && !error && <p className="text-[var(--text-muted)]">Loading…</p>}
-        {error && <p className="text-[var(--vela-red)]">{error}</p>}
+        {isPending && <p className="text-[var(--text-muted)]">Loading…</p>}
+        {!isPending && step === 0 && <CreateAccount />}
 
-        {state && userId && step === 0 && <CreateWallet userId={userId} onCreated={refresh} />}
+        {userId && !state && !error && <p className="text-[var(--text-muted)]">Loading…</p>}
+        {userId && error && <p className="text-[var(--vela-red)]">{error}</p>}
 
-        {state?.wallet && step === 1 && (
+        {state && userId && step === 1 && <CreateWallet userId={userId} onCreated={refresh} />}
+
+        {state?.wallet && step === 2 && (
           <FundWallet
             walletAddress={state.wallet.address}
             usdc={state.portfolio?.USDC.usd ?? 0}
@@ -54,7 +59,7 @@ export default function OnboardingClient() {
           />
         )}
 
-        {state?.wallet && step === 2 && (
+        {state?.wallet && step === 3 && (
           <ConfigureAgent
             balanceUsd={state.totalUsd ?? 0}
             onHired={() => router.push("/dashboard")}

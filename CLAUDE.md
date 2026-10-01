@@ -3,9 +3,9 @@
 Open-source course and DeFi agent on a self-custodial Starknet wallet: passkey (SHHH), session keys capped on-chain, Chipi's AI API, gasless. No pricing: each student deploys their own.
 
 ## Stack
-- **Framework**: Next.js 16 (App Router, Turbopack), `proxy.ts` for auth
+- **Framework**: Next.js 16 (App Router, Turbopack)
 - **Language**: TypeScript (strict)
-- **Auth**: Clerk; its JWKS is registered in the Chipi dashboard
+- **Auth**: Better Auth in the app (anonymous account + passkey, JWT plugin RS256 with one key); `/api/auth/jwks` is registered in the Chipi dashboard (Better Auth provider). API routes call `currentUserId()`
 - **Chipi**: `@chipi-stack/nextjs` (browser) and `@chipi-stack/backend` (server) 14.14+
 - **AI**: Chipi AI API through `sdk.ai` (no direct model provider)
 - **Database**: Postgres via `pg` (`DATABASE_URL`)
@@ -14,6 +14,7 @@ Open-source course and DeFi agent on a self-custodial Starknet wallet: passkey (
 
 ## Key Conventions
 - Always mainnet, never testnet/Sepolia
+- Passkey only, never a PIN. The wallet is created with `useCreateWallet({ usePasskey: true })`; unlock it with `getWalletEncryptKey(wallet.credentialId)`
 - USDC: `0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb` (native, NOT USDC.e)
 - Vesu: the Re7 USDC Core vault in `lib/config.ts` (native USDC). Not the SDK's `VESU_USDC_MAINNET` (USDC.e)
 - The owner key never leaves the browser: register, cap and revoke the session there with `useChipiSession` + `getEncryptKey`
@@ -39,6 +40,7 @@ app/
   onboarding/               # Passkey wallet → fund → hire
   dashboard/page.tsx        # Live agent status, portfolio, activity, stop
   api/agents/route.ts       # GET state · POST create session · PATCH confirm/stop
+  api/auth/[...all]/route.ts # Better Auth (passkeys, /token for Chipi, /jwks)
   api/tick/route.ts         # Scheduler entry (public; claimDueAgent enforces TICK_INTERVAL_MINUTES)
 
 lib/
@@ -50,9 +52,10 @@ lib/
   portfolio.ts, vesu.ts     # Balances, prices, Vesu position and calls
   db.ts                     # Postgres (agents, decisions)
   chipi.ts                  # Server SDK + secrets
+  auth.ts, auth-client.ts   # Better Auth server (getAuth, currentUserId) and client (getChipiToken)
   use-agent-state.ts        # Client hook for GET /api/agents
 
 components/
-  onboarding/               # create-wallet, fund-wallet, configure-agent
+  onboarding/               # create-account, create-wallet, fund-wallet, configure-agent
   dashboard/                # agent-status, portfolio-card, activity-feed, stop-agent
 ```

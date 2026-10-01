@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "@clerk/nextjs";
 import { getWalletEncryptKey, useChipiSession, useChipiWallet } from "@chipi-stack/nextjs";
 import { motion } from "framer-motion";
 import { STRATEGIES, type Strategy } from "@/lib/strategies";
+import { authClient, getChipiToken } from "@/lib/auth-client";
 
 interface ConfigureAgentProps {
   balanceUsd: number;
@@ -21,18 +21,20 @@ interface HireResponse {
 }
 
 export function ConfigureAgent({ balanceUsd, onHired }: ConfigureAgentProps) {
-  const { userId, getToken } = useAuth();
+  const userId = authClient.useSession().data?.user.id;
   const [strategy, setStrategy] = useState<Strategy>("balanced");
   const [maxTradeUsd, setMaxTradeUsd] = useState(Math.max(1, Math.min(5, Math.floor(balanceUsd / 4))));
   const [status, setStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const { wallet } = useChipiWallet({ externalUserId: userId ?? null, getBearerToken: getToken });
+  const { wallet } = useChipiWallet({ externalUserId: userId ?? null, getBearerToken: getChipiToken });
   const { registerSession, supportsSession, isRegistering } = useChipiSession({
     wallet,
-    // The passkey prompt appears only when the user hires the agent.
-    getEncryptKey: () => getWalletEncryptKey(),
-    getBearerToken: () => getToken({ skipCache: true }),
+    // The passkey prompt appears only when the user hires the agent. The
+    // credential id comes from the wallet, so this works on any device.
+    getEncryptKey: () =>
+      getWalletEncryptKey(wallet?.credentialId ?? undefined, { prfSupported: wallet?.prfSupported ?? undefined }),
+    getBearerToken: getChipiToken,
     autoCheckStatus: false,
   });
 

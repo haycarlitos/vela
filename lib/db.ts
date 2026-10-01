@@ -3,7 +3,7 @@ import pg from "pg";
 import type { Strategy } from "./strategies";
 
 // Any Postgres (Neon, Railway, Supabase, Vercel Postgres) via DATABASE_URL.
-const pool = new pg.Pool({
+export const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_SSL === "false" ? undefined : process.env.DATABASE_URL ? { rejectUnauthorized: false } : undefined,
 });

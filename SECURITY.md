@@ -15,6 +15,7 @@ Vela runs an agent on a user's self-custodial wallet. The layers, from strongest
 What the server holds:
 
 - **The session private key**, encrypted with a key derived from `CHIPI_SECRET_KEY` (or with `VELA_SESSION_SECRET` when set). Anyone with both the database and that secret can act as the agent, within the on-chain caps and until the session expires or the user revokes it.
+- **Better Auth's JWT signing key**, encrypted with `BETTER_AUTH_SECRET` (derived from `CHIPI_SECRET_KEY` by default). With it, someone could sign in to Chipi as any of your users, but not move their funds: the wallet key is encrypted with each user's passkey.
 - **Never the owner key.** The wallet key is encrypted with the passkey's WebAuthn PRF secret in the browser. Registering, capping and revoking the session happen in the browser with the user's passkey.
 
 ## Known limits

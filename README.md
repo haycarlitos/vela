@@ -14,7 +14,7 @@
 ```
 Browser                                   Vela server                              Starknet
 ───────                                   ───────────                              ────────
-Sign-in → passkey (PRF) → SHHH wallet ───────────────────────────────────────────▶ deploy (gasless)
+passkey account → passkey (PRF) → SHHH wallet ───────────────────────────────────────────▶ deploy (gasless)
 "Hire agent" ──POST /api/agents──▶ createSessionKey (encrypted at rest)
 passkey prompt: registerSession(key, whitelist, caps) ──────────────────────────▶ session + spending policies, one tx
              ──PATCH /api/agents──▶ waits for the tx, checks the session on-chain, activates
@@ -28,7 +28,7 @@ passkey prompt: registerSession(key, whitelist, caps) ────────�
 
 ## Run it
 
-Requires Node 22, Postgres, a [Clerk](https://clerk.com) app and a [Chipi](https://dashboard.chipipay.com) org with AI credits.
+Requires Node 22, Postgres and a [Chipi](https://dashboard.chipipay.com) org with AI credits. Accounts are passkeys ([Better Auth](https://better-auth.com), inside the app): there is no other provider to sign up for.
 
 ```bash
 cp .env.example .env.local   # fill it in
@@ -36,7 +36,7 @@ npm install
 npm run dev
 ```
 
-In the Chipi dashboard, register your Clerk instance's JWKS (with an `aud` rule) so Chipi accepts your users' tokens.
+In the Chipi dashboard, set your API key's JWKS to `https://<your-app>/api/auth/jwks` with the **Better Auth** provider, so Chipi accepts your users' tokens. Tables are created on first use.
 
 `vercel.json` calls `GET /api/tick` once a day, which is what Vercel Hobby allows. The endpoint needs no secret: the database lets each agent decide at most once per `TICK_INTERVAL_MINUTES` (default 1440), however often it is called. To decide more often, lower it and call the endpoint from any scheduler (QStash, GitHub Actions, `curl` in a loop).
 
@@ -53,6 +53,7 @@ npm run lint && npm run typecheck && npm test
 | `lib/brain.ts` | `sdk.ai.think` with the portfolio in USD and the strategy's risk |
 | `lib/portfolio.ts`, `lib/vesu.ts` | Balances, prices, the Vesu USDC position and its calls |
 | `lib/db.ts` | `agents` and `decisions` (created on first use) |
+| `lib/auth.ts`, `lib/auth-client.ts` | Passkey accounts and the JWT Chipi accepts (Better Auth) |
 | `app/api/agents` | Hire (create the session), confirm or stop, and the dashboard's data |
 | `app/api/tick` | The scheduler entry point |
 | `app/onboarding`, `app/dashboard` | Passkey wallet, hiring, live status |

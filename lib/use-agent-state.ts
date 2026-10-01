@@ -36,8 +36,8 @@ async function fetchAgentState(): Promise<AgentState> {
   return (await res.json()) as AgentState;
 }
 
-/** Polls the signed-in user's wallet, portfolio and agent. */
-export function useAgentState(intervalMs = 20_000) {
+/** Polls the signed-in user's wallet, portfolio and agent. Waits while `enabled` is false (signed out). */
+export function useAgentState(intervalMs = 20_000, enabled = true) {
   const [state, setState] = useState<AgentState | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,6 +51,7 @@ export function useAgentState(intervalMs = 20_000) {
   }, []);
 
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     const load = () =>
       fetchAgentState()
@@ -69,7 +70,7 @@ export function useAgentState(intervalMs = 20_000) {
       cancelled = true;
       clearInterval(id);
     };
-  }, [intervalMs]);
+  }, [intervalMs, enabled]);
 
   return { state, error, refresh };
 }
