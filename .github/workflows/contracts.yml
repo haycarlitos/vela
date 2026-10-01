@@ -18,6 +18,7 @@ jobs:
       - uses: software-mansion/setup-scarb@v1
         with:
           scarb-version: "2.20.1"
+          scarb-lock: contracts/vault-router/Scarb.lock
       - uses: foundry-rs/setup-snfoundry@v4
         with:
           starknet-foundry-version: "0.64.0"
@@ -27,4 +28,5 @@ jobs:
           path: contracts/vault-router/.snfoundry_cache
           key: snfoundry-${{ hashFiles('contracts/vault-router/Scarb.toml') }}
       - run: scarb fmt --check
-      - run: snforge test
+      # One test at a time: the public RPC limits requests per second.
+      - run: snforge test --max-threads 1

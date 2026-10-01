@@ -17,7 +17,7 @@ The router has no owner and holds nothing between transactions; tokens sent to i
 
 ```bash
 scarb build
-snforge test
+snforge test --max-threads 1
 ```
 
 The tests fork Starknet mainnet at a fixed block and run against the real Vesu Re7 USDC Core vault and native USDC. Nothing is spent. They show that deposits credit the caller, withdrawals pay the caller, a withdrawal needs a share approval, and nobody can withdraw someone else's position.

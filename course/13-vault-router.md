@@ -41,7 +41,7 @@ Think it through: the names `deposit_to_self` and `withdraw_to_self` are valid o
 ```bash
 cd contracts/vault-router
 scarb build
-snforge test
+snforge test --max-threads 1
 ```
 
 The tests prove that deposits credit the caller, withdrawals pay the caller and burn only the caller's shares, withdrawing needs a share approval, and a thief with the owner's approval in place still only reaches the thief's own empty position.
@@ -55,5 +55,5 @@ The tests prove that deposits credit the caller, withdrawals pay the caller and 
 ## Test
 
 ```bash
-cd contracts/vault-router && snforge test
+cd contracts/vault-router && snforge test --max-threads 1
 ```
