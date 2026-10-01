@@ -23,6 +23,7 @@ Open-source course and DeFi agent on a self-custodial Starknet wallet: passkey (
 - The model advises, `lib/policy.ts` decides. Never act on `sdk.ai.think` output without `decide()`
 - A tx hash is not a result: always `waitForTransaction`
 - No workarounds around the SDK: if Vela needs something the SDK lacks, add it to the SDK
+- `course/` must match the code: when you change a file a lesson cites, update the lesson
 
 ## Commands
 ```bash
@@ -54,6 +55,9 @@ lib/
   chipi.ts                  # Server SDK + secrets
   auth.ts, auth-client.ts   # Better Auth server (getAuth, currentUserId) and client (getChipiToken)
   use-agent-state.ts        # Client hook for GET /api/agents
+
+contracts/vault-router/      # Cairo router for Vesu (course module 13); snforge fork tests
+course/                      # The course: 00-setup … 16-next-steps, each lesson cites real code
 
 components/
   onboarding/               # create-account, create-wallet, fund-wallet, configure-agent

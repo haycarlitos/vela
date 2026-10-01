@@ -7,6 +7,8 @@
 - **The model advises, code decides.** The agent thinks with Chipi's AI API (`sdk.ai.think`, live market signals and yields), and a deterministic policy (`lib/policy.ts`) decides what actually reaches the chain.
 - **No gas.** Every transaction is sponsored by Chipi's paymaster.
 
+**New here? Start with the [course](./course/README.md):** 17 short modules, from "what is a wallet" to writing a Cairo contract, each with a mainnet exercise and a test.
+
 > SHHH V8.4 is pending its external audit. By default the agent manages wallets up to $100 (`MAX_DEPOSIT_USD`). The agent can lose money within its limits. See [SECURITY.md](./SECURITY.md).
 
 ## How it works
