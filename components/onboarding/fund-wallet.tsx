@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { MIN_FUNDING_USD } from "@/lib/config";
 
 interface FundWalletProps {
   walletAddress: string;
@@ -29,7 +30,7 @@ export function FundWallet({ walletAddress, usdc, depositCapUsd, onRefresh }: Fu
     >
       <h2 className="text-2xl font-bold mb-2">Fund your wallet</h2>
       <p className="text-sm text-[var(--text-secondary)] mb-6">
-        Send at least $5 of USDC on Starknet. The agent manages up to ${depositCapUsd}.
+        Send at least ${MIN_FUNDING_USD} of USDC on Starknet. The agent manages up to ${depositCapUsd}.
       </p>
 
       <div className="glass p-4 mb-4">

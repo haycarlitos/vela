@@ -7,6 +7,7 @@ import { CreateWallet } from "@/components/onboarding/create-wallet";
 import { FundWallet } from "@/components/onboarding/fund-wallet";
 import { ConfigureAgent } from "@/components/onboarding/configure-agent";
 import { useAgentState } from "@/lib/use-agent-state";
+import { MIN_FUNDING_USD } from "@/lib/config";
 import { authClient } from "@/lib/auth-client";
 
 const STEPS = ["Account", "Wallet", "Fund", "Hire"] as const;
@@ -17,7 +18,7 @@ export default function OnboardingClient() {
   const userId = session?.user.id;
   const { state, error, refresh } = useAgentState(15_000, Boolean(userId));
 
-  const step = !userId ? 0 : !state?.wallet ? 1 : (state.totalUsd ?? 0) < 5 ? 2 : 3;
+  const step = !userId ? 0 : !state?.wallet ? 1 : (state.totalUsd ?? 0) < MIN_FUNDING_USD ? 2 : 3;
 
   return (
     <div className="min-h-screen flex flex-col">
