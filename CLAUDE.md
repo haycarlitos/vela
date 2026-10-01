@@ -17,7 +17,7 @@ Open-source course and DeFi agent on a self-custodial Starknet wallet: passkey (
 - USDC: `0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb` (native, NOT USDC.e)
 - Vesu: the Re7 USDC Core vault in `lib/config.ts` (native USDC). Not the SDK's `VESU_USDC_MAINNET` (USDC.e)
 - The owner key never leaves the browser: register, cap and revoke the session there with `useChipiSession` + `getEncryptKey`
-- The server holds only the session key, encrypted with `VELA_SESSION_SECRET`, and executes with `executeTransactionWithSession`
+- The server holds only the session key, encrypted with `sessionSecret()` (HKDF of `CHIPI_SECRET_KEY`, or `VELA_SESSION_SECRET`), and executes with `executeTransactionWithSession`
 - Every token an agent wallet can hold needs a spending policy (the whitelist is not scoped to a contract); `maxPerWindow` is never 0 (0 = no cap)
 - The model advises, `lib/policy.ts` decides. Never act on `sdk.ai.think` output without `decide()`
 - A tx hash is not a result: always `waitForTransaction`
@@ -39,7 +39,7 @@ app/
   onboarding/               # Passkey wallet → fund → hire
   dashboard/page.tsx        # Live agent status, portfolio, activity, stop
   api/agents/route.ts       # GET state · POST create session · PATCH confirm/stop
-  api/tick/route.ts         # Scheduler entry (CRON_SECRET)
+  api/tick/route.ts         # Scheduler entry (public; claimDueAgent enforces TICK_INTERVAL_MINUTES)
 
 lib/
   config.ts                 # Addresses, session limits, MAX_DEPOSIT_USD

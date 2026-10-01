@@ -15,10 +15,10 @@
 Browser                                   Vela server                              Starknet
 ───────                                   ───────────                              ────────
 Sign-in → passkey (PRF) → SHHH wallet ───────────────────────────────────────────▶ deploy (gasless)
-"Hire agent" ──POST /api/agents──▶ createSessionKey (encrypted with VELA_SESSION_SECRET)
+"Hire agent" ──POST /api/agents──▶ createSessionKey (encrypted at rest)
 passkey prompt: registerSession(key, whitelist, caps) ──────────────────────────▶ session + spending policies, one tx
              ──PATCH /api/agents──▶ waits for the tx, checks the session on-chain, activates
-                                   cron → /api/tick, for each active agent:
+                                   cron → /api/tick, for each agent that is due:
                                      session live? → portfolio (sdk.ai.prices + balances + Vesu)
                                      sdk.ai.think → lib/policy.ts decide()
                                      swap (sdk.ai.execute) | Vesu supply/withdraw ──▶ session-signed tx
@@ -38,7 +38,7 @@ npm run dev
 
 In the Chipi dashboard, register your Clerk instance's JWKS (with an `aud` rule) so Chipi accepts your users' tokens.
 
-Schedule `GET /api/tick` with `Authorization: Bearer $CRON_SECRET`. `vercel.json` runs it every 30 minutes on Vercel Pro; on Hobby, use QStash or any external scheduler.
+`vercel.json` calls `GET /api/tick` once a day, which is what Vercel Hobby allows. The endpoint needs no secret: the database lets each agent decide at most once per `TICK_INTERVAL_MINUTES` (default 1440), however often it is called. To decide more often, lower it and call the endpoint from any scheduler (QStash, GitHub Actions, `curl` in a loop).
 
 ```bash
 npm run lint && npm run typecheck && npm test

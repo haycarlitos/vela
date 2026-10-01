@@ -45,3 +45,10 @@ export const MIN_TRADE_USD = 0.5;
  * the SHHH wallet audit is pending; set MAX_DEPOSIT_USD to change it.
  */
 export const MAX_DEPOSIT_USD = Number(process.env.MAX_DEPOSIT_USD ?? 100);
+
+/**
+ * How often each agent decides (minutes). Vercel Hobby runs `vercel.json`'s
+ * cron once a day; with any external scheduler you can go down to minutes.
+ * /api/tick is public, so this, not the scheduler, is the real limit.
+ */
+export const TICK_INTERVAL_MINUTES = Number(process.env.TICK_INTERVAL_MINUTES ?? 24 * 60);

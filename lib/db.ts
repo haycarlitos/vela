@@ -27,6 +27,7 @@ function ensureSchema(): Promise<void> {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
       CREATE INDEX IF NOT EXISTS agents_active ON agents (active) WHERE active;
+      ALTER TABLE agents ADD COLUMN IF NOT EXISTS last_tick_at TIMESTAMPTZ;
 
       CREATE TABLE IF NOT EXISTS decisions (
         id SERIAL PRIMARY KEY,
@@ -118,17 +119,25 @@ export async function setAgentActive(userId: string, sessionPublicKey: string, a
   return (rowCount ?? 0) > 0;
 }
 
-/** Moves an agent to the back of the tick queue. */
-export async function touchAgent(userId: string): Promise<void> {
-  await query(`UPDATE agents SET updated_at = NOW() WHERE user_id = $1`, [userId]);
-}
-
-export async function listActiveAgents(limit: number): Promise<AgentRow[]> {
+/**
+ * Claims the active agent that waited longest, if its last tick is at least
+ * `minGapSeconds` old. Atomic: two concurrent callers never get the same agent,
+ * so /api/tick can be public and still runs each agent at most once per gap.
+ */
+export async function claimDueAgent(minGapSeconds: number): Promise<AgentRow | null> {
   const { rows } = await query<AgentRow>(
-    `SELECT * FROM agents WHERE active ORDER BY updated_at ASC LIMIT $1`,
-    [limit]
+    `UPDATE agents SET last_tick_at = NOW()
+     WHERE user_id = (
+       SELECT user_id FROM agents
+       WHERE active AND (last_tick_at IS NULL OR last_tick_at <= NOW() - make_interval(secs => $1))
+       ORDER BY last_tick_at ASC NULLS FIRST
+       LIMIT 1
+       FOR UPDATE SKIP LOCKED
+     )
+     RETURNING *`,
+    [minGapSeconds]
   );
-  return rows;
+  return rows[0] ?? null;
 }
 
 // ---------- decisions ----------

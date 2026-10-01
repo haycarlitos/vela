@@ -10,7 +10,7 @@ import { vesuDepositCalls, vesuWithdrawCalls } from "./vesu";
 
 export interface TickResult {
   userId: string;
-  outcome: "stopped" | "skipped" | "hold" | "executed" | "failed";
+  outcome: "stopped" | "hold" | "executed" | "failed";
   detail: string;
   txHash?: string;
 }
