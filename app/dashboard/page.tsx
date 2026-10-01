@@ -61,7 +61,7 @@ export default function DashboardPage() {
   const agent = state.agent;
   const active = agent.active && Boolean(state.session?.isActive);
   const decisions = state.decisions ?? [];
-  const paid = decisions.filter((d) => d.paymentTxHash).length * 0.001;
+  const aiCostUsd = decisions.reduce((sum, d) => sum + (d.aiCostUsd ?? 0), 0);
 
   const stop = async () => {
     setStopError(null);
@@ -91,13 +91,13 @@ export default function DashboardPage() {
       </header>
 
       <p className="text-xs text-[var(--vela-gold)]">
-        Beta: the wallet contract (SHHH V8.4) is pending its external audit. Keep at most ${state.depositCapUsd} in it.
+        The wallet contract (SHHH V8.4) is pending its external audit. Keep at most ${state.depositCapUsd} in it.
       </p>
 
       <AgentStatus
         totalValueUsd={state.totalUsd ?? 0}
         totalDecisions={decisions.length}
-        totalX402Spent={paid}
+        aiCostUsd={aiCostUsd}
         sessionRemaining={
           active && state.session
             ? `${timeLeft(state.session.validUntil)} · ${state.session.remainingCalls} calls`

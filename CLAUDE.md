@@ -1,6 +1,6 @@
-# Vela — "Set sail. Let AI navigate."
+# Vela — learn blockchain and AI by building an agent you can trust with money
 
-Open-source DeFi agent on a self-custodial Starknet wallet: passkey (SHHH), session keys capped on-chain, Chipi's AI API, x402 per decision, gasless.
+Open-source course and DeFi agent on a self-custodial Starknet wallet: passkey (SHHH), session keys capped on-chain, Chipi's AI API, gasless. No pricing: each student deploys their own.
 
 ## Stack
 - **Framework**: Next.js 16 (App Router, Turbopack), `proxy.ts` for auth
@@ -21,7 +21,6 @@ Open-source DeFi agent on a self-custodial Starknet wallet: passkey (SHHH), sess
 - Every token an agent wallet can hold needs a spending policy (the whitelist is not scoped to a contract); `maxPerWindow` is never 0 (0 = no cap)
 - The model advises, `lib/policy.ts` decides. Never act on `sdk.ai.think` output without `decide()`
 - A tx hash is not a result: always `waitForTransaction`
-- x402: $0.001 per decision, paid with a session-signed USDC transfer and verified with `SessionTxVerifier` (single use in `x402_payments`)
 - No workarounds around the SDK: if Vela needs something the SDK lacks, add it to the SDK
 
 ## Commands
@@ -36,27 +35,24 @@ npm test             # Vitest
 ## Project Structure
 ```
 app/
-  page.tsx                  # Landing
-  demo/page.tsx             # Marketing demo (sample data)
+  page.tsx                  # Landing (placeholder until the redesign)
   onboarding/               # Passkey wallet → fund → hire
   dashboard/page.tsx        # Live agent status, portfolio, activity, stop
   api/agents/route.ts       # GET state · POST create session · PATCH confirm/stop
   api/tick/route.ts         # Scheduler entry (CRON_SECRET)
-  api/think/route.ts        # Paid decision endpoint (x402)
 
 lib/
-  config.ts                 # Addresses, session limits, beta cap
+  config.ts                 # Addresses, session limits, MAX_DEPOSIT_USD
   strategies.ts             # Strategy definitions (no SDK imports; used by the UI)
   policy.ts                 # decide() and spendingPolicies()
   agent.ts                  # runTick()
   brain.ts                  # sdk.ai.think wrapper
   portfolio.ts, vesu.ts     # Balances, prices, Vesu position and calls
-  x402.ts, payments.ts      # x402 terms/header, on-chain verification
-  db.ts                     # Postgres (agents, decisions, x402_payments)
+  db.ts                     # Postgres (agents, decisions)
   chipi.ts                  # Server SDK + secrets
   use-agent-state.ts        # Client hook for GET /api/agents
 
 components/
   onboarding/               # create-wallet, fund-wallet, configure-agent
-  dashboard/                # agent-status, portfolio-card, activity-feed, stop-agent (+ demo-only cards)
+  dashboard/                # agent-status, portfolio-card, activity-feed, stop-agent
 ```

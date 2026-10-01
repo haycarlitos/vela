@@ -131,7 +131,6 @@ export function ConfigureAgent({ balanceUsd, onHired }: ConfigureAgentProps) {
           <li>Check the market every 30 minutes</li>
           {strategy !== "conservative" && <li>Trade on AVNU when the signal is strong</li>}
           <li>Earn yield on Vesu</li>
-          <li>Pay $0.001 per decision (x402)</li>
           <li>Never hold your key: you can stop it any time</li>
         </ul>
       </div>

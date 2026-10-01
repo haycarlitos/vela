@@ -22,11 +22,6 @@ export function sessionSecret(): string {
   return secret;
 }
 
-/** Where agents pay for their decisions. */
-export function treasuryAddress(): string {
-  return required("VELA_TREASURY_ADDRESS");
-}
-
 function required(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`${name} is not set`);

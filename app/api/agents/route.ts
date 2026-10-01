@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { waitForTransaction } from "@chipi-stack/backend";
 import { chipi, sessionSecret } from "@/lib/chipi";
 import {
-  BETA_DEPOSIT_CAP_USD,
+  MAX_DEPOSIT_USD,
   MIN_TRADE_USD,
   SESSION_ENTRYPOINTS,
   SESSION_MAX_CALLS,
@@ -49,7 +49,7 @@ export async function GET() {
     portfolio,
     prices,
     totalUsd: totalUsd(portfolio),
-    depositCapUsd: BETA_DEPOSIT_CAP_USD,
+    depositCapUsd: MAX_DEPOSIT_USD,
     // Never send the encrypted session key to the browser.
     agent: agent && {
       strategy: agent.strategy,
@@ -68,7 +68,6 @@ export async function GET() {
       reason: d.reason,
       txHash: d.tx_hash,
       success: d.success,
-      paymentTxHash: d.payment_tx_hash,
       aiCostUsd: d.ai_cost_usd === null ? null : Number(d.ai_cost_usd),
     })),
   });
@@ -101,9 +100,9 @@ export async function POST(req: Request) {
   }
 
   const { portfolio, prices } = await getPortfolio(wallet.publicKey);
-  if (totalUsd(portfolio) > BETA_DEPOSIT_CAP_USD) {
+  if (totalUsd(portfolio) > MAX_DEPOSIT_USD) {
     return NextResponse.json(
-      { error: `During the beta the agent manages wallets up to $${BETA_DEPOSIT_CAP_USD}` },
+      { error: `The agent manages wallets up to $${MAX_DEPOSIT_USD} (MAX_DEPOSIT_USD)` },
       { status: 403 }
     );
   }

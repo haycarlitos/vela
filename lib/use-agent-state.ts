@@ -26,7 +26,6 @@ export interface AgentState {
     reason: string;
     txHash: string | null;
     success: boolean | null;
-    paymentTxHash: string | null;
     aiCostUsd: number | null;
   }>;
 }

@@ -34,16 +34,14 @@ describe("decide", () => {
     expect(action).toEqual({ kind: "swap", from: "USDC", to: "ETH", amountUsd: 5, reason: "dip" });
   });
 
-  it("keeps the x402 reserve in USDC", () => {
+  it("swaps at most the USDC the wallet holds", () => {
     const low = { ...portfolio, USDC: { balance: 3, usd: 3 } };
     expect(decide({ action: "swap", from: "USDC", to: "ETH", amount: 5, reason: "x" }, low, balanced)).toMatchObject({
       kind: "swap",
-      amountUsd: 2,
+      amountUsd: 3,
     });
-    const reserveOnly = { ...portfolio, USDC: { balance: 1.2, usd: 1.2 } };
-    expect(
-      decide({ action: "swap", from: "USDC", to: "ETH", amount: 5, reason: "x" }, reserveOnly, balanced)
-    ).toMatchObject({ kind: "hold" });
+    const dust = { ...portfolio, USDC: { balance: 0.2, usd: 0.2 } };
+    expect(decide({ action: "swap", from: "USDC", to: "ETH", amount: 5, reason: "x" }, dust, balanced)).toMatchObject({ kind: "hold" });
   });
 
   it("never swaps more than the wallet holds of the source token", () => {
@@ -74,10 +72,10 @@ describe("decide", () => {
     ).toMatchObject({ kind: "hold", reason: expect.stringContaining("conservative") });
   });
 
-  it("supplies USDC to Vesu, keeping the reserve", () => {
+  it("supplies USDC to Vesu, at most the liquid USDC", () => {
     expect(decide({ action: "supply", to: "vesu_usdc", amount: 50, reason: "7% APY" }, portfolio, { strategy: "conservative", maxTradeUsd: 100 })).toEqual({
       kind: "supply",
-      amountUsd: 39,
+      amountUsd: 40,
       reason: "7% APY",
     });
   });

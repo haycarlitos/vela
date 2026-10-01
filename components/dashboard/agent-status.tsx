@@ -9,7 +9,8 @@ interface AgentStatusProps {
   pnlPct?: number;
   winRate?: number;
   totalDecisions: number;
-  totalX402Spent: number;
+  /** What the decisions cost in AI credits (USD). */
+  aiCostUsd: number;
   sessionRemaining?: string;
   isActive: boolean;
 }
@@ -26,7 +27,7 @@ export function AgentStatus({
   pnlPct,
   winRate,
   totalDecisions,
-  totalX402Spent,
+  aiCostUsd,
   sessionRemaining,
   isActive,
 }: AgentStatusProps) {
@@ -111,7 +112,7 @@ export function AgentStatus({
           <p className="text-2xl font-bold font-mono group-hover:text-[var(--vela-blue)] transition-colors">
             {totalDecisions}
           </p>
-          <p className="text-xs text-[var(--text-muted)]">x402: ${totalX402Spent.toFixed(3)}</p>
+          <p className="text-xs text-[var(--text-muted)]">AI cost: ${aiCostUsd.toFixed(3)}</p>
         </motion.div>
       </div>
     </div>

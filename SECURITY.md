@@ -17,9 +17,9 @@ What the server holds:
 - **The session private key**, encrypted with `VELA_SESSION_SECRET`. Anyone with both the database and the secret can act as the agent, within the on-chain caps and until the session expires or the user revokes it.
 - **Never the owner key.** The wallet key is encrypted with the passkey's WebAuthn PRF secret in the browser. Registering, capping and revoking the session happen in the browser with the user's passkey.
 
-## Known limits (beta)
+## Known limits
 
-- **SHHH V8.4** (the wallet contract) is pending its external audit. The beta caps managed wallets at $100 (`BETA_DEPOSIT_CAP_USD`).
-- **x402 on `/api/think` is first-come-first-served for anonymous payers.** A payment is a public on-chain transfer, and the endpoint takes the payer's address from the `X-PAYMENT` header. Someone who sees the transfer can submit its hash first and get the decision; the real payer then gets `ALREADY_USED`. At $0.001 per call this is a nuisance, not a loss of funds. Vela's own agents verify their payment in-process right after sending it.
-- **The whitelist is not scoped to a contract.** `transfer` and `approve` are allowed on every token, which is why every token the wallet can hold has a spending policy. A token outside USDC, ETH and STRK sent to the wallet is not capped: do not hold other tokens in an agent wallet.
-- **Spending policies meter `transfer`, `approve` and `increase_allowance`**, not `transfer_from`, and not the vault's `withdraw` (which only returns funds to the wallet).
+- **SHHH V8.4** (the wallet contract) is pending its external audit. Vela refuses to manage wallets above `MAX_DEPOSIT_USD` ($100 by default).
+- **The whitelist is not scoped to a contract.** A whitelisted function (`approve`, for example) is allowed on every contract, which is why every token the wallet can hold has a spending policy. A token outside USDC, ETH and STRK sent to the wallet is not capped: do not hold other tokens in an agent wallet.
+- **Spending policies meter `transfer`, `approve` and `increase_allowance`**, not `transfer_from`, and not a vault's `withdraw` or `redeem`. Vesu's `withdraw` takes any receiver, so a leaked session key could withdraw the wallet's Vesu position to another address. Until the vault router (course module 13) replaces direct `deposit`/`withdraw` in the session whitelist, keep in Vesu only what you accept to lose.
+- **On SHHH, a call over its cap can report success without moving funds.** Check the receipt's `Transfer` events, not only its status.

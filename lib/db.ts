@@ -1,6 +1,5 @@
 import "server-only";
 import pg from "pg";
-import type { TxHashStore } from "@chipi-stack/backend";
 import type { Strategy } from "./strategies";
 
 // Any Postgres (Neon, Railway, Supabase, Vercel Postgres) via DATABASE_URL.
@@ -44,11 +43,6 @@ function ensureSchema(): Promise<void> {
         ai_cost_usd NUMERIC
       );
       CREATE INDEX IF NOT EXISTS decisions_user ON decisions (user_id, created_at DESC);
-
-      CREATE TABLE IF NOT EXISTS x402_payments (
-        tx_hash TEXT PRIMARY KEY,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
     `);
   })().catch((err) => {
     schemaReady = null;
@@ -191,16 +185,3 @@ export async function recentDecisions(userId: string, limit = 30): Promise<Decis
   );
   return rows;
 }
-
-// ---------- x402 ----------
-
-/** Single use per payment transaction, enforced by the primary key (atomic across instances). */
-export const x402TxHashStore: TxHashStore = {
-  async consume(transactionHash: string): Promise<boolean> {
-    const { rowCount } = await query(
-      `INSERT INTO x402_payments (tx_hash) VALUES ($1) ON CONFLICT (tx_hash) DO NOTHING`,
-      [transactionHash]
-    );
-    return rowCount === 1;
-  },
-};

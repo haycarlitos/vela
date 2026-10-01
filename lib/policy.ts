@@ -13,7 +13,6 @@ import {
   TOKEN_DECIMALS,
   TOKENS,
   VESU_USDC_POSITION,
-  X402_RESERVE_USD,
   type TokenSymbol,
 } from "./config";
 import { STRATEGIES, type Strategy } from "./strategies";
@@ -82,7 +81,7 @@ export function decide(decision: unknown, portfolio: Portfolio, limits: Limits):
 
   if (decision.action === "supply") {
     if (!isVesuUsdc(decision.to)) return hold(`Supplying to ${decision.to ?? "?"} is not supported`);
-    const amountUsd = floorCents(Math.min(cap, portfolio.USDC.usd - X402_RESERVE_USD));
+    const amountUsd = floorCents(Math.min(cap, portfolio.USDC.usd));
     if (amountUsd < MIN_TRADE_USD) return hold("Not enough liquid USDC to supply");
     return { kind: "supply", amountUsd, reason: decision.reason };
   }
@@ -101,8 +100,7 @@ export function decide(decision: unknown, portfolio: Portfolio, limits: Limits):
   const to = symbol(decision.to);
   if (!from || !to) return hold(`Vela does not trade ${decision.from ?? "?"} -> ${decision.to ?? "?"}`);
   if (from === to) return hold("Swap with the same token on both sides");
-  const spendable = portfolio[from].usd - (from === "USDC" ? X402_RESERVE_USD : 0);
-  const amountUsd = floorCents(Math.min(cap, spendable));
+  const amountUsd = floorCents(Math.min(cap, portfolio[from].usd));
   if (amountUsd < MIN_TRADE_USD) return hold(`Not enough ${from} to swap`);
   return { kind: "swap", from, to, amountUsd, reason: decision.reason };
 }

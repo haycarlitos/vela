@@ -1,13 +1,11 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-// Public: the landing, the demo, and the two machine endpoints that carry
-// their own auth (/api/think is paid with x402, /api/tick needs CRON_SECRET).
+// Public: the landing, sign-in, and the scheduler entry point (/api/tick
+// carries its own auth).
 const isPublic = createRouteMatcher([
   "/",
-  "/demo(.*)",
   "/sign-in(.*)",
   "/sign-up(.*)",
-  "/api/think",
   "/api/tick",
 ]);
 
