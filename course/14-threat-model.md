@@ -31,7 +31,7 @@ Plus, until the vault router is in place, the Vesu position (module 13). And Vel
 With a $1 max trade and $5 in the wallet:
 
 1. From a script with your session key, try an `approve` of 2 USDC to any address. What does the receipt say? Did a `Transfer` or `Approval` happen?
-2. Try a `transfer` of USDC. Why does it fail even though the amount is small?
+2. Try a `transfer` of USDC. The receipt says succeeded: did a `Transfer` happen? Why not, even though the amount is small?
 3. Stop the agent and try again with the same key.
 
 Write down each result next to the row of the table above that predicts it.

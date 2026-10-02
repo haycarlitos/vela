@@ -12,7 +12,7 @@ Rules Vela follows, and why:
 - **`maxPerWindow` is never 0.** On-chain, 0 means *no cap*, not "nothing allowed".
 - **Caps are in base units at hire-time prices**, with headroom so a normal price move does not make a legal trade revert: 1.05× for USDC, 1.5× for ETH and STRK.
 - **Per day = four trades.** One bad day costs at most four times your max trade per token.
-- **Check what really moved.** On SHHH, a call over its cap can come back as succeeded without moving anything. The receipt's `Transfer` events are the truth (module 3).
+- **Check what really moved.** On SHHH, a call the wallet refuses (over its cap, not whitelisted, or from a revoked session) comes back as succeeded without moving anything. The receipt's `Transfer` events are the truth (module 3).
 
 ```
 maxTradeUsd = $5

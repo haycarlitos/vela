@@ -25,13 +25,16 @@ vi.mock("@chipi-stack/backend", async (orig) => ({
   waitForTransaction: vi.fn(),
 }));
 
-import { runTick } from "../agent";
+import { hash } from "starknet";
+import { movedFunds, runTick } from "../agent";
 import { logDecision, setAgentActive, type AgentRow } from "../db";
 import { getPortfolio } from "../portfolio";
 import { think } from "../brain";
 import { waitForTransaction } from "@chipi-stack/backend";
 
 const WALLET = { publicKey: "0x0abc", encryptedPrivateKey: "enc", walletType: "SHHH" };
+const TRANSFER = hash.getSelectorFromName("Transfer");
+const APPROVAL = hash.getSelectorFromName("Approval");
 
 const agent: AgentRow = {
   user_id: "user_1",
@@ -65,7 +68,11 @@ beforeEach(() => {
     calls.push("think");
     return { decision: { action: "hold", reason: "quiet" }, cost: { charged: 0.0012, currency: "USD" } } as never;
   });
-  vi.mocked(waitForTransaction).mockResolvedValue({ transactionHash: "0xtrade", success: true, events: [] });
+  vi.mocked(waitForTransaction).mockResolvedValue({
+    transactionHash: "0xtrade",
+    success: true,
+    events: [{ from_address: "0xusdc", keys: [TRANSFER, "0x0abc", "0xde5"], data: ["0x1", "0x0"] }],
+  } as never);
 });
 
 describe("runTick", () => {
@@ -150,5 +157,37 @@ describe("runTick", () => {
 
     expect(result).toMatchObject({ outcome: "failed", detail: "Spending: exceeds per-call" });
     expect(logDecision).toHaveBeenLastCalledWith(expect.objectContaining({ kind: "supply", success: false }));
+  });
+
+  it("records a succeeded transaction that moved nothing as a failure", async () => {
+    vi.mocked(think).mockResolvedValue({
+      decision: { action: "supply", to: "vesu_usdc", amount: 3, reason: "yield" },
+      cost: { charged: 0.001, currency: "USD" },
+    } as never);
+    // What mainnet returns when the wallet blocks a session call: success, and only the paymaster's fee transfer.
+    vi.mocked(waitForTransaction).mockResolvedValue({
+      transactionHash: "0xtrade",
+      success: true,
+      events: [{ from_address: "0xstrk", keys: [TRANSFER, "0x4d38", "0x1176"], data: ["0xa5e7", "0x0"] }],
+    } as never);
+
+    const result = await runTick(agent);
+
+    expect(result).toMatchObject({ outcome: "failed", detail: expect.stringContaining("nothing moved") });
+    expect(logDecision).toHaveBeenLastCalledWith(expect.objectContaining({ kind: "supply", success: false }));
+  });
+});
+
+describe("movedFunds", () => {
+  it("finds a Transfer from or to the wallet, in keys or in data", () => {
+    expect(movedFunds([{ keys: [TRANSFER, "0xabc", "0x9"], data: ["0x1", "0x0"] }], "0x0abc")).toBe(true);
+    expect(movedFunds([{ keys: [TRANSFER, "0x9", "0xabc"], data: ["0x1", "0x0"] }], "0xabc")).toBe(true);
+    expect(movedFunds([{ keys: [TRANSFER], data: ["0xabc", "0x9", "0x1", "0x0"] }], "0xabc")).toBe(true);
+  });
+
+  it("ignores other events and other wallets' transfers", () => {
+    expect(movedFunds([{ keys: [APPROVAL, "0xabc", "0xabc"], data: ["0x1", "0x0"] }], "0xabc")).toBe(false);
+    expect(movedFunds([{ keys: [TRANSFER, "0x4d38", "0x1176"], data: ["0x1", "0x0"] }], "0xabc")).toBe(false);
+    expect(movedFunds([], "0xabc")).toBe(false);
   });
 });
