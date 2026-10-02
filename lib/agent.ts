@@ -1,6 +1,6 @@
 import "server-only";
 import { waitForTransaction, type SessionKeyData } from "@chipi-stack/backend";
-import type { Call } from "starknet";
+import { hash, type Call } from "starknet";
 import { chipi, sessionSecret } from "./chipi";
 import { logDecision, setAgentActive, type AgentRow } from "./db";
 import { think } from "./brain";
@@ -86,6 +86,11 @@ export async function runTick(agent: AgentRow): Promise<TickResult> {
     return null;
   });
   if (!receipt) return { userId, outcome: "failed", detail: "no receipt yet", txHash };
+  const failure = !receipt.success
+    ? receipt.revertReason ?? "reverted"
+    : !movedFunds(receipt.events, wallet.publicKey)
+      ? BLOCKED
+      : null;
 
   await logDecision({
     userId,
@@ -93,17 +98,36 @@ export async function runTick(agent: AgentRow): Promise<TickResult> {
     fromToken: action.kind === "swap" ? action.from : action.kind === "withdraw" ? "vesu_usdc" : "USDC",
     toToken: action.kind === "swap" ? action.to : action.kind === "supply" ? "vesu_usdc" : "USDC",
     amountUsd: action.amountUsd,
-    reason: receipt.success ? action.reason : `Reverted: ${receipt.revertReason ?? "unknown"}`,
+    reason: failure ? `Failed: ${failure}` : action.reason,
     txHash,
-    success: receipt.success,
+    success: !failure,
     aiCostUsd: cost.charged,
   });
   return {
     userId,
-    outcome: receipt.success ? "executed" : "failed",
-    detail: receipt.success ? `${action.kind} $${action.amountUsd}` : receipt.revertReason ?? "reverted",
+    outcome: failure ? "failed" : "executed",
+    detail: failure ?? `${action.kind} $${action.amountUsd}`,
     txHash,
   };
+}
+
+const TRANSFER = BigInt(hash.getSelectorFromName("Transfer"));
+const BLOCKED = "blocked by the wallet (cap, whitelist or ended session): nothing moved";
+
+/**
+ * Did any token move into or out of the wallet? On SHHH a call the wallet
+ * refuses (over a cap, not whitelisted, revoked session) still comes back
+ * SUCCEEDED: the paymaster's transaction ran, the wallet's call did not.
+ * Every swap, supply and withdraw moves a token, so no Transfer means it failed.
+ */
+export function movedFunds(events: { keys: string[]; data: string[] }[], wallet: string): boolean {
+  const me = BigInt(wallet);
+  return events.some(
+    (e) =>
+      BigInt(e.keys[0] ?? 0) === TRANSFER &&
+      // from and to are keys (Cairo 1 tokens) or the first two data felts (older tokens)
+      [e.keys[1], e.keys[2], e.data[0], e.data[1]].some((f) => f !== undefined && BigInt(f) === me),
+  );
 }
 
 async function callsFor(action: Exclude<Action, { kind: "hold" }>, wallet: string, usdcPrice: number): Promise<Call[]> {
