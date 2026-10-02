@@ -23,7 +23,7 @@ export const VESU_USDC_VAULT = "0x017891114c00b07317b9102adefbad9fd5de40c5616f09
  * VESU_USDC_VAULT. Its deposit_to_self / withdraw_to_self take no receiver:
  * shares and USDC always go back to the calling wallet.
  */
-export const VESU_ROUTER = "ROUTER_ADDRESS_PENDING";
+export const VESU_ROUTER = "0x007e060a96ba5a9b84b126cba444ce5fd897ae268c769bfe59e8ad59dca41e21";
 
 /** Name Vela and the AI API use for the Vesu USDC position. */
 export const VESU_USDC_POSITION = "vesu_usdc";
