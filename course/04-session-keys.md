@@ -10,7 +10,7 @@ Your wallet contract keeps, for each session key it knows:
 |---|---|---|
 | Expiry | 7 days | `SESSION_SECONDS` in `lib/config.ts` |
 | Number of calls | 1,000 | `SESSION_MAX_CALLS` |
-| Allowed functions | `approve`, `multi_route_swap`, `deposit`, `withdraw` | `SESSION_ENTRYPOINTS` |
+| Allowed functions | `approve`, `multi_route_swap`, `deposit_to_self`, `withdraw_to_self` | `SESSION_ENTRYPOINTS` |
 | Spending caps per token | module 5 | `spendingPolicies` |
 
 The owner key (your passkey) registers the session once. From then on the agent signs with the session key and **never asks you again**.

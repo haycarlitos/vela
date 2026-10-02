@@ -16,7 +16,7 @@ Two things make `withdraw` dangerous for a session key:
 1. **Anyone can be the receiver.** The function takes any address.
 2. **It is not metered.** Spending policies watch `transfer`, `approve` and `increase_allowance` (module 5). `withdraw` is none of them.
 
-And a session whitelist holds function names, not arguments (module 4). Whitelisting `withdraw` means a leaked session key can send your whole Vesu position anywhere, in one call, under every cap. Today's Vela still whitelists it, and `SECURITY.md` says so.
+And a session whitelist holds function names, not arguments (module 4). Whitelisting `withdraw` would mean a leaked session key can send your whole Vesu position anywhere, in one call, under every cap. Vela's first version did exactly that.
 
 ## The fix: a router
 
@@ -37,6 +37,7 @@ Think it through: the names `deposit_to_self` and `withdraw_to_self` are valid o
 
 - `src/lib.cairo`: the contract. Read the header comment first, then the two functions. The vault is fixed in the constructor, so nobody can point the router at a fake vault.
 - `tests/test_router.cairo`: **fork tests**. snforge copies Starknet mainnet at a fixed block and runs the router against the real Vesu vault and real USDC. Nothing is spent.
+- In Vela: `VESU_ROUTER` in `lib/config.ts` (the deployed router), the calls in `lib/vesu.ts`, and the shares cap in `spendingPolicies`. Agents hired before the router keep the vault's own calls until their owner hires again (`callsFor` in `lib/agent.ts`).
 
 ```bash
 cd contracts/vault-router

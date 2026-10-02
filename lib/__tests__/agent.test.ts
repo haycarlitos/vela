@@ -4,7 +4,7 @@ const calls: string[] = [];
 
 const sdk = {
   getWallet: vi.fn(),
-  sessions: { getSessionData: vi.fn() },
+  sessions: { getSessionData: vi.fn(), getSpendingPolicy: vi.fn() },
   executeTransactionWithSession: vi.fn(),
   ai: { execute: vi.fn() },
 };
@@ -18,7 +18,7 @@ vi.mock("../db", () => ({
   logDecision: vi.fn(async () => {}),
   setAgentActive: vi.fn(async () => true),
 }));
-vi.mock("../portfolio", async (orig) => ({ ...(await orig<typeof import("../portfolio")>()), getPortfolio: vi.fn() }));
+vi.mock("../portfolio", async (orig) => ({ ...(await orig<typeof import("../portfolio")>()), getPortfolio: vi.fn(), callContract: vi.fn() }));
 vi.mock("../brain", () => ({ think: vi.fn() }));
 vi.mock("@chipi-stack/backend", async (orig) => ({
   ...(await orig<typeof import("@chipi-stack/backend")>()),
@@ -28,7 +28,8 @@ vi.mock("@chipi-stack/backend", async (orig) => ({
 import { hash } from "starknet";
 import { movedFunds, runTick } from "../agent";
 import { logDecision, setAgentActive, type AgentRow } from "../db";
-import { getPortfolio } from "../portfolio";
+import { callContract, getPortfolio } from "../portfolio";
+import { VESU_ROUTER, VESU_USDC_VAULT } from "../config";
 import { think } from "../brain";
 import { waitForTransaction } from "@chipi-stack/backend";
 
@@ -58,6 +59,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   calls.length = 0;
   sdk.getWallet.mockResolvedValue(WALLET);
+  // A session hired with the router: the vault shares have a real cap.
+  sdk.sessions.getSpendingPolicy.mockResolvedValue({ maxPerCall: 5_250_000n * 10n ** 12n, maxPerWindow: 1n, windowSeconds: 86_400, spentInWindow: 0n, windowStart: 0 });
+  vi.mocked(callContract).mockResolvedValue(["0x2b5e3af16b1880000", "0x0"]); // preview_withdraw: 50e18 shares
   sdk.sessions.getSessionData.mockResolvedValue({ isActive: true, validUntil: 1900000000, remainingCalls: 900, allowedEntrypoints: [] });
   vi.mocked(getPortfolio).mockResolvedValue({ portfolio, prices: { USDC: 1, ETH: 3000, STRK: 0.12 } });
   sdk.executeTransactionWithSession.mockImplementation(async ({ params }) => {
@@ -85,7 +89,10 @@ describe("runTick", () => {
   });
 
   it("stops the agent when the session is no longer active on-chain, without thinking", async () => {
-    sdk.sessions.getSessionData.mockResolvedValue({ isActive: false, validUntil: 0, remainingCalls: 0, allowedEntrypoints: [] });
+    // A session hired with the router: the vault shares have a real cap.
+  sdk.sessions.getSpendingPolicy.mockResolvedValue({ maxPerCall: 5_250_000n * 10n ** 12n, maxPerWindow: 1n, windowSeconds: 86_400, spentInWindow: 0n, windowStart: 0 });
+  vi.mocked(callContract).mockResolvedValue(["0x2b5e3af16b1880000", "0x0"]); // preview_withdraw: 50e18 shares
+  sdk.sessions.getSessionData.mockResolvedValue({ isActive: false, validUntil: 0, remainingCalls: 0, allowedEntrypoints: [] });
     const result = await runTick(agent);
     expect(result.outcome).toBe("stopped");
     expect(setAgentActive).toHaveBeenCalledWith("user_1", "0x5e5", false);
@@ -175,6 +182,42 @@ describe("runTick", () => {
 
     expect(result).toMatchObject({ outcome: "failed", detail: expect.stringContaining("nothing moved") });
     expect(logDecision).toHaveBeenLastCalledWith(expect.objectContaining({ kind: "supply", success: false }));
+  });
+});
+
+describe("Vesu calls", () => {
+  const supply = { action: "supply", to: "vesu_usdc", amount: 3, reason: "yield" };
+  const withdraw = { action: "withdraw", from: "vesu_usdc", amount: 2, reason: "risk off" };
+  const sent = () => sdk.executeTransactionWithSession.mock.calls[0][0].params.calls;
+  const thinks = (decision: object) =>
+    vi.mocked(think).mockResolvedValue({ decision, cost: { charged: 0.001, currency: "USD" } } as never);
+
+  it("supplies through the router: approve USDC to it, then deposit_to_self", async () => {
+    thinks(supply);
+    await runTick(agent);
+    expect(sent()).toEqual([
+      { contractAddress: expect.any(String), entrypoint: "approve", calldata: [VESU_ROUTER, "0x2dc6c0", "0x0"] },
+      { contractAddress: VESU_ROUTER, entrypoint: "deposit_to_self", calldata: ["0x2dc6c0", "0x0"] },
+    ]);
+  });
+
+  it("withdraws through the router: approve the shares preview_withdraw asks for, then withdraw_to_self", async () => {
+    thinks(withdraw);
+    vi.mocked(getPortfolio).mockResolvedValue({ portfolio: { ...portfolio, vesuUsd: 10 }, prices: { USDC: 1, ETH: 3000, STRK: 0.12 } });
+    await runTick(agent);
+    expect(callContract).toHaveBeenCalledWith({ contractAddress: VESU_USDC_VAULT, entrypoint: "preview_withdraw", calldata: ["0x1e8480", "0x0"] });
+    expect(sent()).toEqual([
+      { contractAddress: VESU_USDC_VAULT, entrypoint: "approve", calldata: [VESU_ROUTER, "0x2b5e3af16b1880000", "0x0"] },
+      { contractAddress: VESU_ROUTER, entrypoint: "withdraw_to_self", calldata: ["0x1e8480", "0x0"] },
+    ]);
+  });
+
+  it("keeps the vault's own calls for a session hired before the router (shares capped at one unit)", async () => {
+    sdk.sessions.getSpendingPolicy.mockResolvedValue({ maxPerCall: 1n, maxPerWindow: 1n, windowSeconds: 86_400, spentInWindow: 0n, windowStart: 0 });
+    thinks(supply);
+    await runTick(agent);
+    expect(sent().map((c: { entrypoint: string }) => c.entrypoint)).toEqual(["approve", "deposit"]);
+    expect(sent()[1].contractAddress).toBe(VESU_USDC_VAULT);
   });
 });
 

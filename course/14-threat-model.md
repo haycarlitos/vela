@@ -24,7 +24,7 @@ STRK   4 × 7.50  = $30
                  ≈ $81 a day, until you press Stop or the session expires (7 days)
 ```
 
-Plus, until the vault router is in place, the Vesu position (module 13). And Vela refuses to manage wallets above `MAX_DEPOSIT_USD` ($100 by default) while the wallet contract's audit is pending. Those two lines are your real risk budget. Write yours down.
+Vesu shares count the same way: $21 a day, through the router (module 13). And Vela refuses to manage wallets above `MAX_DEPOSIT_USD` ($100 by default) while the wallet contract's audit is pending. Those two lines are your real risk budget. Write yours down.
 
 ## Exercise: red-team your agent
 

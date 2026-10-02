@@ -34,4 +34,4 @@ sncast deploy --class-hash <class hash from declare> \
   --arguments '0x017891114c00b07317b9102adefbad9fd5de40c5616f094ee09fe2fad67191b1'
 ```
 
-Then Vela switches its Vesu calls to the router: `lib/vesu.ts` builds the calls above, `lib/config.ts` whitelists the two router functions instead of `deposit`/`withdraw`, and `spendingPolicies` gives the vault shares a real cap.
+Vela's router is `VESU_ROUTER` in `lib/config.ts`: `lib/vesu.ts` builds the calls above, `SESSION_ENTRYPOINTS` whitelists the two router functions instead of `deposit`/`withdraw`, and `spendingPolicies` caps the vault shares. If you deploy your own, put its address there.

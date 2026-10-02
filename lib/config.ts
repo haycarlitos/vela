@@ -18,6 +18,13 @@ export const TOKEN_DECIMALS: Record<TokenSymbol, number> = { USDC: 6, ETH: 18, S
  */
 export const VESU_USDC_VAULT = "0x017891114c00b07317b9102adefbad9fd5de40c5616f094ee09fe2fad67191b1";
 
+/**
+ * The vault router (contracts/vault-router, course module 13) deployed for
+ * VESU_USDC_VAULT. Its deposit_to_self / withdraw_to_self take no receiver:
+ * shares and USDC always go back to the calling wallet.
+ */
+export const VESU_ROUTER = "ROUTER_ADDRESS_PENDING";
+
 /** Name Vela and the AI API use for the Vesu USDC position. */
 export const VESU_USDC_POSITION = "vesu_usdc";
 
@@ -31,11 +38,12 @@ export const SESSION_MAX_CALLS = 1_000;
  * Functions the session key may call. The whitelist is not scoped to a
  * contract, so every token the wallet holds needs a spending policy
  * (see spendingPolicies in lib/policy.ts).
- * - approve: swaps and Vesu deposits
+ * - approve: swaps, and the USDC or vault shares the router moves
  * - multi_route_swap: AVNU (the calls /v1/ai/execute returns)
- * - deposit / withdraw: the Vesu ERC-4626 vault
+ * - deposit_to_self / withdraw_to_self: the Vesu router. Never the vault's own
+ *   deposit / withdraw, which take any receiver.
  */
-export const SESSION_ENTRYPOINTS = ["approve", "multi_route_swap", "deposit", "withdraw"];
+export const SESSION_ENTRYPOINTS = ["approve", "multi_route_swap", "deposit_to_self", "withdraw_to_self"];
 
 /** Never trade less than this: fees and slippage eat it. */
 export const MIN_TRADE_USD = 0.5;

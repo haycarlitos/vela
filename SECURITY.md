@@ -8,7 +8,7 @@ Use GitHub's private vulnerability reporting (the repository's **Security** tab,
 
 Vela runs an agent on a user's self-custodial wallet. The layers, from strongest to weakest:
 
-1. **The wallet contract (on-chain).** The agent signs only with a session key. The contract limits that key to a function whitelist (`lib/config.ts`, `SESSION_ENTRYPOINTS`), a call budget, an expiry, and a per-call and per-day cap for USDC, ETH and STRK, and a one-unit cap on the Vesu vault's shares (`lib/policy.ts`, `spendingPolicies`). Vela only activates an agent after reading those caps back from the chain. A bug anywhere in Vela cannot move more than those caps.
+1. **The wallet contract (on-chain).** The agent signs only with a session key. The contract limits that key to a function whitelist (`lib/config.ts`, `SESSION_ENTRYPOINTS`), a call budget, an expiry, and a per-call and per-day cap for USDC, ETH and STRK, and the Vesu vault's shares (`lib/policy.ts`, `spendingPolicies`). Vela only activates an agent after reading those caps back from the chain. A bug anywhere in Vela cannot move more than those caps.
 2. **The policy guard (`lib/policy.ts`).** Deterministic. The model's answer is advice: only a known action, in a tradable token, inside the user's max trade and the wallet's balances, reaches the chain.
 3. **Receipts.** A transaction hash is not a result. Every execution waits for its receipt (`waitForTransaction`) and a revert is recorded as a failure.
 
@@ -22,5 +22,5 @@ What the server holds:
 
 - **SHHH V8.4** (the wallet contract) is pending its external audit. Vela refuses to manage wallets above `MAX_DEPOSIT_USD` ($100 by default).
 - **The whitelist is not scoped to a contract.** A whitelisted function (`approve`, for example) is allowed on every contract, which is why every token the wallet can hold has a spending policy. A token outside USDC, ETH, STRK and the Vesu shares sent to the wallet is not capped: do not hold other tokens in an agent wallet.
-- **Spending policies meter `transfer`, `approve` and `increase_allowance`**, not `transfer_from`, and not a vault's `withdraw` or `redeem`. Vesu's `withdraw` takes any receiver, so a leaked session key could withdraw the wallet's Vesu position to another address. Until the vault router (course module 13) replaces direct `deposit`/`withdraw` in the session whitelist, keep in Vesu only what you accept to lose.
+- **Spending policies meter `transfer`, `approve` and `increase_allowance`**, not `transfer_from`, and not a vault's `withdraw` or `redeem`. So the session never whitelists Vesu's `withdraw` (it takes any receiver): it calls the vault router's `deposit_to_self` and `withdraw_to_self` (`contracts/vault-router`, course module 13), which pay only the caller, after a capped `approve`. Agents hired before the router still whitelist the vault's own `deposit`/`withdraw`: stop and hire them again.
 - **On SHHH, a refused session call reports success without moving funds**: over a cap, not whitelisted, or after revocation. Check the receipt's `Transfer` events, not only its status (`movedFunds` in `lib/agent.ts`).

@@ -8,11 +8,11 @@
 action ──▶ calls ──▶ executeTransactionWithSession ──▶ txHash ──▶ waitForTransaction ──▶ log
             │
             ├─ swap:     sdk.ai.execute builds them (approve + AVNU multi_route_swap)
-            ├─ supply:   approve USDC to the vault + deposit (lib/vesu.ts)
-            └─ withdraw: withdraw from the vault (lib/vesu.ts)
+            ├─ supply:   approve USDC to the router + deposit_to_self (lib/vesu.ts)
+            └─ withdraw: approve vault shares to the router + withdraw_to_self (lib/vesu.ts)
 ```
 
-- **Who builds the calls.** For swaps, Chipi's `/v1/ai/execute` finds a route on AVNU (a DEX aggregator) and returns ready-to-sign calls. For Vesu, `lib/vesu.ts` builds them.
+- **Who builds the calls.** For swaps, Chipi's `/v1/ai/execute` finds a route on AVNU (a DEX aggregator) and returns ready-to-sign calls. For Vesu, `lib/vesu.ts` builds them, through the vault router (module 13).
 - **Who signs.** `executeTransactionWithSession` decrypts the session key on the server and signs. The owner key is never involved, and no prompt appears.
 - **What is checked.** The session's whitelist and caps, inside the wallet contract. Then the receipt, where `success` is not enough: on SHHH a call the wallet refuses (over a cap, not whitelisted, revoked session) still comes back SUCCEEDED. The paymaster's transaction ran; your wallet's call did not. So `movedFunds` also looks for a `Transfer` into or out of the wallet, and without one the trade is recorded as failed.
 
@@ -28,5 +28,5 @@ action ──▶ calls ──▶ executeTransactionWithSession ──▶ txHash 
 ## Test
 
 ```bash
-npx vitest run lib/__tests__/agent.test.ts -t "swap|session key|moved"
+npx vitest run lib/__tests__/agent.test.ts -t "swap|session key|moved|router"
 ```
