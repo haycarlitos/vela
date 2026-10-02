@@ -123,9 +123,11 @@ describe("spendingPolicies", () => {
     expect(usdToBaseUnits(5, "USDC", 0.9995)).toBeLessThanOrEqual(usdc.maxPerCall);
   });
 
-  it("all but freezes the Vesu vault shares, which approve could otherwise hand away", () => {
+  it("caps the Vesu vault shares like USDC, in share units", () => {
     const shares = spendingPolicies(5, prices)[3];
-    expect(shares).toEqual({ token: VESU_USDC_VAULT, maxPerCall: 1n, maxPerWindow: 1n, windowSeconds: 86_400 });
+    expect(shares).toEqual({ token: VESU_USDC_VAULT, maxPerCall: 5_250_000n * 10n ** 12n, maxPerWindow: 21_000_000n * 10n ** 12n, windowSeconds: 86_400 });
+    // A $5 withdrawal at 1.018 USDC per share burns ~4.91 shares: under the cap.
+    expect((5_000_000n * 10n ** 12n * 1_000n) / 1_018n).toBeLessThan(shares.maxPerCall);
   });
 
   it("gives volatile tokens 1.5x headroom and never a zero window cap", () => {

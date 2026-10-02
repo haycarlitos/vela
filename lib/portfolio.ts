@@ -11,6 +11,11 @@ const provider = new RpcProvider({
   nodeUrl: process.env.STARKNET_RPC_URL || "https://api.cartridge.gg/x/starknet/mainnet",
 });
 
+/** Read-only contract call on that RPC. */
+export function callContract(call: { contractAddress: string; entrypoint: string; calldata: string[] }): Promise<string[]> {
+  return provider.callContract(call);
+}
+
 const SYMBOLS: TokenSymbol[] = ["USDC", "ETH", "STRK"];
 
 export async function getPrices(): Promise<Record<TokenSymbol, number>> {
@@ -32,7 +37,7 @@ export async function getPortfolio(walletAddress: string): Promise<{ portfolio: 
         sdk.getTokenBalance({ walletPublicKey: walletAddress, chainToken: ChainToken[s], chain: Chain.STARKNET })
       )
     ),
-    vesuMaxWithdraw((call) => provider.callContract(call), walletAddress),
+    vesuMaxWithdraw(callContract, walletAddress),
   ]);
 
   const holding = (s: TokenSymbol) => {

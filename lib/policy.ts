@@ -130,9 +130,10 @@ export const CAPPED_TOKENS = [...Object.values(TOKENS), VESU_USDC_VAULT];
  * under $1 does not either. maxPerWindow is always positive (0 would mean no
  * cap).
  *
- * The Vesu vault's shares are a token too, and `approve` is allowed on every
- * contract: the agent never needs to approve them, so their cap is one base
- * unit, as close to frozen as a positive cap gets.
+ * The Vesu vault's shares are a token too: withdrawing through the router
+ * approves them to it (lib/vesu.ts). Their cap is the USDC cap in share units
+ * (18 decimals): a share is worth at least one USDC (1.018 when this was
+ * written; it grows as interest accrues), so a max-size withdrawal fits.
  */
 export function spendingPolicies(
   maxTradeUsd: number,
@@ -144,5 +145,10 @@ export function spendingPolicies(
     const perCall = usdToBaseUnits(maxTradeUsd * headroom, token, token === "USDC" ? 1 : prices[token]);
     return { token: TOKENS[token], maxPerCall: perCall, maxPerWindow: perCall * 4n, windowSeconds: DAY };
   });
-  return [...tokens, { token: VESU_USDC_VAULT, maxPerCall: 1n, maxPerWindow: 1n, windowSeconds: DAY }];
+  const usdc = tokens.find((p) => p.token === TOKENS.USDC)!;
+  const SHARES_PER_USDC_UNIT = 10n ** 12n; // 18 - 6 decimals
+  return [
+    ...tokens,
+    { token: VESU_USDC_VAULT, maxPerCall: usdc.maxPerCall * SHARES_PER_USDC_UNIT, maxPerWindow: usdc.maxPerWindow * SHARES_PER_USDC_UNIT, windowSeconds: DAY },
+  ];
 }

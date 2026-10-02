@@ -19,7 +19,7 @@ maxTradeUsd = $5
 USDC   per call 5.25 USDC      per day 21 USDC
 ETH    per call $7.50 of ETH   per day $30 of ETH
 STRK   per call $7.50 of STRK  per day $30 of STRK
-vUSDC  1 base unit             (the agent never needs to approve shares)
+vUSDC  5.25 shares' worth     per day 21     (withdrawing approves shares to the router, module 13)
 ```
 
 ## The code

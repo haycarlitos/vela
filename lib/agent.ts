@@ -5,9 +5,9 @@ import { chipi, sessionSecret } from "./chipi";
 import { logDecision, setAgentActive, type AgentRow } from "./db";
 import { think } from "./brain";
 import { decide, usdToBaseUnits, type Action } from "./policy";
-import { getPortfolio, totalUsd } from "./portfolio";
-import { MAX_DEPOSIT_USD } from "./config";
-import { vesuDepositCalls, vesuWithdrawCalls } from "./vesu";
+import { callContract, getPortfolio, totalUsd } from "./portfolio";
+import { MAX_DEPOSIT_USD, VESU_USDC_VAULT } from "./config";
+import { legacyVesuDepositCalls, legacyVesuWithdrawCalls, vesuDepositCalls, vesuSharesFor, vesuWithdrawCalls } from "./vesu";
 
 export interface TickResult {
   userId: string;
@@ -75,7 +75,7 @@ export async function runTick(agent: AgentRow): Promise<TickResult> {
   }
 
   // 4. Execute with the session key and wait for the receipt: a hash is not a result.
-  const calls = await callsFor(action, wallet.publicKey, prices.USDC);
+  const calls = await callsFor(action, wallet.publicKey, session.publicKey, prices.USDC);
   const txHash = await sdk.executeTransactionWithSession({
     params: { encryptKey: sessionSecret(), wallet, session, calls },
   });
@@ -130,9 +130,21 @@ export function movedFunds(events: { keys: string[]; data: string[] }[], wallet:
   );
 }
 
-async function callsFor(action: Exclude<Action, { kind: "hold" }>, wallet: string, usdcPrice: number): Promise<Call[]> {
-  if (action.kind === "supply") return vesuDepositCalls(usdToBaseUnits(action.amountUsd, "USDC", usdcPrice), wallet);
-  if (action.kind === "withdraw") return vesuWithdrawCalls(usdToBaseUnits(action.amountUsd, "USDC", usdcPrice), wallet);
+async function callsFor(
+  action: Exclude<Action, { kind: "hold" }>,
+  wallet: string,
+  sessionPublicKey: string,
+  usdcPrice: number
+): Promise<Call[]> {
+  if (action.kind === "supply" || action.kind === "withdraw") {
+    const assets = usdToBaseUnits(action.amountUsd, "USDC", usdcPrice);
+    // Sessions hired before the router cap the vault shares at one unit and
+    // whitelist the vault's own deposit/withdraw: keep calling those.
+    const shares = await chipi().sessions.getSpendingPolicy({ walletAddress: wallet, sessionPublicKey, token: VESU_USDC_VAULT });
+    const legacy = shares.maxPerCall <= 1n;
+    if (action.kind === "supply") return legacy ? legacyVesuDepositCalls(assets, wallet) : vesuDepositCalls(assets);
+    return legacy ? legacyVesuWithdrawCalls(assets, wallet) : vesuWithdrawCalls(assets, await vesuSharesFor(callContract, assets));
+  }
   const { calls } = await chipi().ai.execute({
     chain: "starknet",
     action: "swap",
