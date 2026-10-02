@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { CAPPED_TOKENS, decide, spendingPolicies, usdToBaseUnits, type Portfolio } from "../policy";
-import { TOKENS, VESU_USDC_VAULT } from "../config";
+import { TOKENS, VESU_USDC_VAULT, isFunded } from "../config";
 
 const portfolio: Portfolio = {
   USDC: { balance: 40, usd: 40 },
@@ -136,5 +136,12 @@ describe("spendingPolicies", () => {
 
   it("refuses a max trade below the minimum", () => {
     expect(() => spendingPolicies(0, prices)).toThrow();
+  });
+});
+
+describe("isFunded", () => {
+  it("accepts exactly 1 USDC even when USDC trades a hair under $1", () => {
+    expect(isFunded(0.9997)).toBe(true);
+    expect(isFunded(0.5)).toBe(false);
   });
 });

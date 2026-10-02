@@ -44,6 +44,14 @@ export const MIN_TRADE_USD = 0.5;
 export const MIN_FUNDING_USD = 1;
 
 /**
+ * True when a wallet worth `totalUsd` meets MIN_FUNDING_USD. USDC is priced a
+ * hair under $1, so exactly 1 USDC is worth $0.99…: allow 2% below.
+ */
+export function isFunded(totalUsd: number): boolean {
+  return totalUsd >= MIN_FUNDING_USD * 0.98;
+}
+
+/**
  * The most a wallet may hold while the agent runs (USD). A safety limit while
  * the SHHH wallet audit is pending; set MAX_DEPOSIT_USD to change it.
  */
