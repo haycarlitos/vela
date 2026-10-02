@@ -89,10 +89,7 @@ describe("runTick", () => {
   });
 
   it("stops the agent when the session is no longer active on-chain, without thinking", async () => {
-    // A session hired with the router: the vault shares have a real cap.
-  sdk.sessions.getSpendingPolicy.mockResolvedValue({ maxPerCall: 5_250_000n * 10n ** 12n, maxPerWindow: 1n, windowSeconds: 86_400, spentInWindow: 0n, windowStart: 0 });
-  vi.mocked(callContract).mockResolvedValue(["0x2b5e3af16b1880000", "0x0"]); // preview_withdraw: 50e18 shares
-  sdk.sessions.getSessionData.mockResolvedValue({ isActive: false, validUntil: 0, remainingCalls: 0, allowedEntrypoints: [] });
+    sdk.sessions.getSessionData.mockResolvedValue({ isActive: false, validUntil: 0, remainingCalls: 0, allowedEntrypoints: [] });
     const result = await runTick(agent);
     expect(result.outcome).toBe("stopped");
     expect(setAgentActive).toHaveBeenCalledWith("user_1", "0x5e5", false);
