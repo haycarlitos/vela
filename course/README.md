@@ -32,7 +32,7 @@ Either way, every exercise runs on mainnet with cents. Nothing here is a simulat
 | 9 | [Harnessing](./09-harnessing.md) | Context, schemas, validation, guardrails, logs | `decide` in `lib/policy.ts` |
 | 10 | [From decision to transaction](./10-execute.md) | Building calls, signing with the session, checking the result | `runTick` in `lib/agent.ts` |
 | 11 | [The autonomous loop](./11-loop.md) | Schedulers, idempotency, auto-stop | `app/api/tick/route.ts`, `claimDueAgent` |
-| 12 | [The agent pays for its intelligence](./12-x402.md) | x402: pay per call from the session | *in progress* |
+| 12 | [The agent pays for its intelligence](./12-x402.md) | x402: pay per call from the session | `think` in `lib/brain.ts`, `sdk.ai.think` |
 | **D** | **Your first contract** | | |
 | 13 | [Yield without losing control](./13-vault-router.md) | Cairo, fork tests, deploying | `contracts/vault-router` |
 | **E** | **Run it safely** | | |

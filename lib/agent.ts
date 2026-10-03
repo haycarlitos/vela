@@ -3,10 +3,10 @@ import { waitForTransaction, type SessionKeyData } from "@chipi-stack/backend";
 import { hash, type Call } from "starknet";
 import { chipi, sessionSecret } from "./chipi";
 import { logDecision, setAgentActive, type AgentRow } from "./db";
-import { think } from "./brain";
+import { aiCostUsd, think } from "./brain";
 import { decide, usdToBaseUnits, type Action } from "./policy";
 import { callContract, getPortfolio, totalUsd } from "./portfolio";
-import { MAX_DEPOSIT_USD, VESU_USDC_VAULT } from "./config";
+import { MAX_DEPOSIT_USD, VESU_USDC_VAULT, payAiWithX402 } from "./config";
 import { legacyVesuDepositCalls, legacyVesuWithdrawCalls, vesuDepositCalls, vesuSharesFor, vesuWithdrawCalls } from "./vesu";
 
 export interface TickResult {
@@ -66,11 +66,14 @@ export async function runTick(agent: AgentRow): Promise<TickResult> {
   // 3. Think, then let the policy decide.
   const strategy = agent.strategy;
   const maxTradeUsd = Number(agent.max_trade_usd);
-  const { decision, cost } = await think(portfolio, strategy, maxTradeUsd);
+  // Paid from Chipi credits, or per call from the session when Chipi asks (module 12).
+  const thought = await think(portfolio, strategy, maxTradeUsd, payAiWithX402() ? { wallet, session } : undefined);
+  const { decision } = thought;
+  const aiCost = aiCostUsd(thought);
   const action = decide(decision, portfolio, { strategy, maxTradeUsd });
 
   if (action.kind === "hold") {
-    await logDecision({ userId, kind: "hold", reason: action.reason, aiCostUsd: cost.charged });
+    await logDecision({ userId, kind: "hold", reason: action.reason, aiCostUsd: aiCost });
     return { userId, outcome: "hold", detail: action.reason };
   }
 
@@ -82,7 +85,7 @@ export async function runTick(agent: AgentRow): Promise<TickResult> {
   const receipt = await waitForTransaction(txHash, { timeoutMs: 120_000 }).catch(async (err: unknown) => {
     // Sent, but no receipt yet: record the hash anyway, so the trade is never invisible.
     const detail = `No receipt after 2 minutes: ${err instanceof Error ? err.message : String(err)}`;
-    await logDecision({ userId, kind: action.kind, amountUsd: action.amountUsd, reason: detail, txHash, aiCostUsd: cost.charged });
+    await logDecision({ userId, kind: action.kind, amountUsd: action.amountUsd, reason: detail, txHash, aiCostUsd: aiCost });
     return null;
   });
   if (!receipt) return { userId, outcome: "failed", detail: "no receipt yet", txHash };
@@ -101,7 +104,7 @@ export async function runTick(agent: AgentRow): Promise<TickResult> {
     reason: failure ? `Failed: ${failure}` : action.reason,
     txHash,
     success: !failure,
-    aiCostUsd: cost.charged,
+    aiCostUsd: aiCost,
   });
   return {
     userId,

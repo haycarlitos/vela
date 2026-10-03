@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const calls: string[] = [];
 
@@ -19,7 +19,7 @@ vi.mock("../db", () => ({
   setAgentActive: vi.fn(async () => true),
 }));
 vi.mock("../portfolio", async (orig) => ({ ...(await orig<typeof import("../portfolio")>()), getPortfolio: vi.fn(), callContract: vi.fn() }));
-vi.mock("../brain", () => ({ think: vi.fn() }));
+vi.mock("../brain", async (orig) => ({ ...(await orig<typeof import("../brain")>()), think: vi.fn() }));
 vi.mock("@chipi-stack/backend", async (orig) => ({
   ...(await orig<typeof import("@chipi-stack/backend")>()),
   waitForTransaction: vi.fn(),
@@ -179,6 +179,35 @@ describe("runTick", () => {
 
     expect(result).toMatchObject({ outcome: "failed", detail: expect.stringContaining("nothing moved") });
     expect(logDecision).toHaveBeenLastCalledWith(expect.objectContaining({ kind: "supply", success: false }));
+  });
+});
+
+describe("paying for AI", () => {
+  afterEach(() => {
+    delete process.env.VELA_PAY_AI_WITH_X402;
+  });
+
+  it("uses credits by default: think gets no payment", async () => {
+    await runTick(agent);
+    expect(vi.mocked(think).mock.calls[0][3]).toBeUndefined();
+    expect(logDecision).toHaveBeenLastCalledWith(expect.objectContaining({ kind: "hold", aiCostUsd: 0.0012 }));
+  });
+
+  it("with VELA_PAY_AI_WITH_X402, think may pay from the session and the x402 amount is logged as the cost", async () => {
+    process.env.VELA_PAY_AI_WITH_X402 = "true";
+    vi.mocked(think).mockResolvedValue({
+      decision: { action: "hold", reason: "quiet" },
+      cost: { charged: 0, currency: "USD" },
+      x402Payment: { transactionHash: "0xpay", payer: "0x0abc", amount: "15000", asset: "0xusdc" },
+    } as never);
+
+    await runTick(agent);
+
+    expect(vi.mocked(think).mock.calls[0][3]).toEqual({
+      wallet: WALLET,
+      session: { publicKey: "0x5e5", encryptedPrivateKey: "sess-enc", validUntil: 1900000000 },
+    });
+    expect(logDecision).toHaveBeenLastCalledWith(expect.objectContaining({ kind: "hold", aiCostUsd: 0.015 }));
   });
 });
 
