@@ -5,7 +5,7 @@ import { chipi, sessionSecret } from "@/lib/chipi";
 import {
   MAX_DEPOSIT_USD,
   MIN_TRADE_USD,
-  SESSION_ENTRYPOINTS,
+  sessionEntrypoints,
   SESSION_MAX_CALLS,
   SESSION_SECONDS,
 } from "@/lib/config";
@@ -127,7 +127,7 @@ export async function POST(req: Request) {
     sessionPublicKey: session.publicKey,
     validUntil: session.validUntil,
     maxCalls: SESSION_MAX_CALLS,
-    allowedEntrypoints: SESSION_ENTRYPOINTS,
+    allowedEntrypoints: sessionEntrypoints(),
     // bigint does not survive JSON; the browser converts these back.
     spendingPolicies: policies.map((p) => ({
       token: p.token,

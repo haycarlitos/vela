@@ -60,7 +60,7 @@ npm run lint && npm run typecheck && npm test
 | `app/api/tick` | The scheduler entry point |
 | `app/onboarding`, `app/dashboard` | Passkey wallet, hiring, live status |
 
-Built on `@chipi-stack/nextjs` and `@chipi-stack/backend` 14.14.
+Built on `@chipi-stack/nextjs` and `@chipi-stack/backend` 14.15.
 
 ## License
 

@@ -45,6 +45,25 @@ export const SESSION_MAX_CALLS = 1_000;
  */
 export const SESSION_ENTRYPOINTS = ["approve", "multi_route_swap", "deposit_to_self", "withdraw_to_self"];
 
+/**
+ * Pay AI decisions per call over x402, from the agent's session, when Chipi
+ * asks for it (402: the org has no credits). Off unless VELA_PAY_AI_WITH_X402
+ * is "true". The payment is a USDC `transfer`, so the session must whitelist
+ * it (sessionEntrypoints) and the USDC cap meters it like a trade. Sessions
+ * hired before turning it on cannot pay: stop and hire again.
+ */
+export function payAiWithX402(): boolean {
+  return process.env.VELA_PAY_AI_WITH_X402 === "true";
+}
+
+/** The most the agent pays for one AI decision over x402, in USDC base units: $0.02. */
+export const X402_MAX_PRICE_USDC = 20_000n;
+
+/** Functions a new session may call: SESSION_ENTRYPOINTS, plus `transfer` to pay for AI over x402. */
+export function sessionEntrypoints(): string[] {
+  return payAiWithX402() ? [...SESSION_ENTRYPOINTS, "transfer"] : SESSION_ENTRYPOINTS;
+}
+
 /** Never trade less than this: fees and slippage eat it. */
 export const MIN_TRADE_USD = 0.5;
 
