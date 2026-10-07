@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { CAPPED_TOKENS, decide, spendingPolicies, usdToBaseUnits, type Portfolio } from "../policy";
-import { TOKENS, VESU_USDC_VAULT, isFunded } from "../config";
+import { TOKENS, VESU_USDC_VAULT, describeTickInterval, isFunded } from "../config";
 
 const portfolio: Portfolio = {
   USDC: { balance: 40, usd: 40 },
@@ -145,5 +145,16 @@ describe("isFunded", () => {
   it("accepts exactly 1 USDC even when USDC trades a hair under $1", () => {
     expect(isFunded(0.9997)).toBe(true);
     expect(isFunded(0.5)).toBe(false);
+  });
+});
+
+describe("describeTickInterval", () => {
+  it("says how often the agent decides, in words", () => {
+    expect(describeTickInterval(1440)).toBe("once a day");
+    expect(describeTickInterval(60)).toBe("every hour");
+    expect(describeTickInterval(240)).toBe("every 4 hours");
+    expect(describeTickInterval(15)).toBe("every 15 minutes");
+    expect(describeTickInterval(2880)).toBe("every 2 days");
+    expect(describeTickInterval(90)).toBe("every 90 minutes");
   });
 });

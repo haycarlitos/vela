@@ -2,9 +2,21 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
 
+const title = "Vela: an AI agent that invests for you, inside limits your wallet enforces";
+const description =
+  "A self-custodial Starknet wallet you open with your face, and an AI agent that trades and earns yield within spending caps written on-chain. Open source, built with Chipi.";
+
+// Same rule as lib/auth's appUrl (not imported: it pulls in the database).
+const siteUrl =
+  process.env.BETTER_AUTH_URL ??
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000");
+
 export const metadata: Metadata = {
-  title: "Vela: learn blockchain and AI by building an agent",
-  description: "Open-source course: a self-custodial Starknet wallet, an AI agent with capped session keys, built with Chipi.",
+  metadataBase: new URL(siteUrl),
+  title,
+  description,
+  openGraph: { title, description, siteName: "Vela", type: "website" },
+  twitter: { card: "summary_large_image", title, description },
   icons: {
     icon: "/favicon.ico",
     apple: "/apple-touch-icon.png",

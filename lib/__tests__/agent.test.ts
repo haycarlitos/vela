@@ -101,6 +101,8 @@ describe("runTick", () => {
     sdk.getWallet.mockResolvedValue({ ...WALLET, publicKey: "0xdef" });
     expect((await runTick(agent)).outcome).toBe("stopped");
     expect(sdk.executeTransactionWithSession).not.toHaveBeenCalled();
+    // Recorded, so the user sees why the agent went quiet.
+    expect(logDecision).toHaveBeenCalledWith(expect.objectContaining({ kind: "stopped", reason: expect.stringMatching(/wallet/i) }));
   });
 
   it("waits, without thinking, when the wallet grew past MAX_DEPOSIT_USD after hiring", async () => {
@@ -207,7 +209,7 @@ describe("paying for AI", () => {
       wallet: WALLET,
       session: { publicKey: "0x5e5", encryptedPrivateKey: "sess-enc", validUntil: 1900000000 },
     });
-    expect(logDecision).toHaveBeenLastCalledWith(expect.objectContaining({ kind: "hold", aiCostUsd: 0.015 }));
+    expect(logDecision).toHaveBeenLastCalledWith(expect.objectContaining({ kind: "hold", aiCostUsd: 0.015, paymentTxHash: "0xpay" }));
   });
 });
 

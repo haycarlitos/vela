@@ -9,14 +9,15 @@ An agent you cannot see is an agent you cannot trust. Everything worth watching 
 | Session active, time and calls left | Chain: `getSessionData` | `GET /api/agents` → dashboard status |
 | Spent in today's window, per token | Chain: `getSpendingPolicy` | Module 5's script; a good dashboard addition |
 | Balances and Vesu position | Chain, via Chipi and RPC | `getPortfolio` |
-| Every decision, reason, tx and result | Database: `decisions` | Activity feed (failures in red) |
+| Every decision, reason, tx and result | Database: `decisions` | Activity feed (failures and crashed ticks in red) |
 | What the AI cost | Database: `ai_cost_usd` | Dashboard "AI cost" |
-| Ticks that crashed | Server logs | Vercel → your project → Logs, search `tick failed` |
+| Ticks that crashed | `decisions` (`kind: error`) and server logs | Activity feed; `failed` in the `/api/tick` answer; Vercel logs, search `tick failed` |
+| Agents gone silent | Database: `agents.last_tick_at` | `overdue` in the `/api/tick` answer (`countOverdueAgents`) |
 
 Two rules:
 
 - **When the chain and the database disagree, the chain wins.** The database records what Vela tried; the chain records what happened.
-- **Alert on silence.** An agent that has not logged a decision in two intervals is a broken scheduler, not a calm market.
+- **Alert on silence.** An agent that has not logged a decision in two intervals is a broken scheduler, not a calm market. `/api/tick` counts them as `overdue`; let your scheduler alert on it and on `failed`.
 
 ## Exercise
 

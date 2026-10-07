@@ -40,6 +40,7 @@ export async function runTick(agent: AgentRow): Promise<TickResult> {
   const wallet = await sdk.getWallet({ externalUserId: userId });
   if (!wallet || BigInt(wallet.publicKey) !== BigInt(agent.wallet_address)) {
     await setAgentActive(userId, session.publicKey, false);
+    await logDecision({ userId, kind: "stopped", reason: "Wallet not found or changed: hire again from the new wallet" });
     return { userId, outcome: "stopped", detail: "wallet not found or changed" };
   }
 
@@ -70,10 +71,12 @@ export async function runTick(agent: AgentRow): Promise<TickResult> {
   const thought = await think(portfolio, strategy, maxTradeUsd, payAiWithX402() ? { wallet, session } : undefined);
   const { decision } = thought;
   const aiCost = aiCostUsd(thought);
+  // The x402 payment for this decision, if Chipi was paid per call: same row as the decision.
+  const paymentTxHash = thought.x402Payment?.transactionHash;
   const action = decide(decision, portfolio, { strategy, maxTradeUsd });
 
   if (action.kind === "hold") {
-    await logDecision({ userId, kind: "hold", reason: action.reason, aiCostUsd: aiCost });
+    await logDecision({ userId, kind: "hold", reason: action.reason, aiCostUsd: aiCost, paymentTxHash });
     return { userId, outcome: "hold", detail: action.reason };
   }
 
@@ -85,7 +88,7 @@ export async function runTick(agent: AgentRow): Promise<TickResult> {
   const receipt = await waitForTransaction(txHash, { timeoutMs: 120_000 }).catch(async (err: unknown) => {
     // Sent, but no receipt yet: record the hash anyway, so the trade is never invisible.
     const detail = `No receipt after 2 minutes: ${err instanceof Error ? err.message : String(err)}`;
-    await logDecision({ userId, kind: action.kind, amountUsd: action.amountUsd, reason: detail, txHash, aiCostUsd: aiCost });
+    await logDecision({ userId, kind: action.kind, amountUsd: action.amountUsd, reason: detail, txHash, aiCostUsd: aiCost, paymentTxHash });
     return null;
   });
   if (!receipt) return { userId, outcome: "failed", detail: "no receipt yet", txHash };
@@ -105,6 +108,7 @@ export async function runTick(agent: AgentRow): Promise<TickResult> {
     txHash,
     success: !failure,
     aiCostUsd: aiCost,
+    paymentTxHash,
   });
   return {
     userId,

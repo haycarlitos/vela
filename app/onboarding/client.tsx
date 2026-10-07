@@ -12,7 +12,7 @@ import { authClient } from "@/lib/auth-client";
 
 const STEPS = ["Account", "Wallet", "Fund", "Hire"] as const;
 
-export default function OnboardingClient() {
+export default function OnboardingClient({ tickEvery }: { tickEvery: string }) {
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
   const userId = session?.user.id;
@@ -63,6 +63,7 @@ export default function OnboardingClient() {
         {state?.wallet && step === 3 && (
           <ConfigureAgent
             balanceUsd={state.totalUsd ?? 0}
+            tickEvery={tickEvery}
             onHired={() => router.push("/dashboard")}
           />
         )}
