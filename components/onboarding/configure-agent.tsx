@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { getWalletEncryptKey, useChipiSession, useChipiWallet } from "@chipi-stack/nextjs";
 import { motion } from "framer-motion";
 import { STRATEGIES, type Strategy } from "@/lib/strategies";
@@ -8,6 +9,8 @@ import { authClient, getChipiToken } from "@/lib/auth-client";
 
 interface ConfigureAgentProps {
   balanceUsd: number;
+  /** How often the agent decides, in words ("every hour"). */
+  tickEvery: string;
   onHired: () => void;
 }
 
@@ -20,11 +23,12 @@ interface HireResponse {
   error?: string;
 }
 
-export function ConfigureAgent({ balanceUsd, onHired }: ConfigureAgentProps) {
+export function ConfigureAgent({ balanceUsd, tickEvery, onHired }: ConfigureAgentProps) {
   const userId = authClient.useSession().data?.user.id;
   const [strategy, setStrategy] = useState<Strategy>("balanced");
   const [maxTradeUsd, setMaxTradeUsd] = useState(Math.max(1, Math.min(5, Math.floor(balanceUsd / 4))));
   const [status, setStatus] = useState("");
+  const [acceptedRisk, setAcceptedRisk] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const { wallet } = useChipiWallet({ externalUserId: userId ?? null, getBearerToken: getChipiToken });
@@ -130,18 +134,33 @@ export function ConfigureAgent({ balanceUsd, onHired }: ConfigureAgentProps) {
       <div className="glass p-4 mb-6 space-y-1 text-sm text-[var(--text-secondary)]">
         <p>Your agent will:</p>
         <ul className="space-y-1">
-          <li>Check the market once a day (or as often as you schedule it)</li>
+          <li>Check the market {tickEvery}</li>
           {strategy !== "conservative" && <li>Trade on AVNU when the signal is strong</li>}
           <li>Earn yield on Vesu</li>
           <li>Never hold your key: you can stop it any time</li>
         </ul>
       </div>
 
+      <label className="flex items-start gap-3 mb-6 text-sm text-[var(--text-secondary)] cursor-pointer">
+        <input
+          type="checkbox"
+          checked={acceptedRisk}
+          onChange={(e) => setAcceptedRisk(e.target.checked)}
+          className="mt-1 accent-[var(--vela-blue)]"
+        />
+        <span>
+          I understand the agent can lose money within these caps, and that Vela is a beta, not financial advice.{" "}
+          <Link href="/terms" target="_blank" className="underline text-[var(--vela-blue)]">
+            Terms
+          </Link>
+        </span>
+      </label>
+
       {status && <p className="text-sm text-[var(--vela-blue)] text-center mb-4">{status}</p>}
 
       <button
         onClick={handleHire}
-        disabled={isRegistering || !wallet || !(maxTradeUsd >= 0.5)}
+        disabled={isRegistering || !wallet || !acceptedRisk || !(maxTradeUsd >= 0.5)}
         className="w-full py-4 rounded-xl bg-[var(--vela-blue)] text-[var(--bg-primary)] font-semibold text-lg hover:brightness-110 transition-all disabled:opacity-50"
       >
         {isRegistering ? "Waiting for your passkey…" : "Hire agent"}

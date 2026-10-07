@@ -153,6 +153,20 @@ export async function claimDueAgent(minGapSeconds: number): Promise<AgentRow | n
   return rows[0] ?? null;
 }
 
+/**
+ * Active agents with no tick for `maxAgeSeconds` (counted from activation when
+ * they never ran): the scheduler stopped calling, or their ticks keep failing
+ * before the claim. A count only, so /api/tick can report it without user ids.
+ */
+export async function countOverdueAgents(maxAgeSeconds: number): Promise<number> {
+  const { rows } = await query<{ n: string }>(
+    `SELECT COUNT(*) AS n FROM agents
+     WHERE active AND COALESCE(last_tick_at, updated_at) < NOW() - make_interval(secs => $1)`,
+    [maxAgeSeconds]
+  );
+  return Number(rows[0]?.n ?? 0);
+}
+
 // ---------- decisions ----------
 
 export interface DecisionRow {

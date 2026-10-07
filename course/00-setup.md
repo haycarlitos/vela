@@ -30,7 +30,7 @@ By the end you have your own Vela running at `https://<your-project>.vercel.app`
 3. **Tell Chipi who your users are.** In the Chipi dashboard, set your API key's JWKS to `https://<your-project>.vercel.app/api/auth/jwks` and pick the **Better Auth** provider. Chipi now accepts the tokens your app signs for its users (module 2 explains how).
 4. **Try it.** Open your app, create an account with a passkey, create your wallet, send it $5–10 of USDC on Starknet, and hire the agent with a $1 cap.
 
-Everything else has a default: the encryption keys are derived from your Chipi secret key, the agent decides once a day, and it refuses to manage wallets above $100. `.env.example` lists every optional setting.
+Everything else has a default: the encryption keys are derived from your Chipi secret key, the agent decides once a day (module 11 shows how to make it hourly), and it refuses to manage wallets above $100. `.env.example` lists every optional setting.
 
 ## Run it on your machine
 

@@ -37,12 +37,14 @@ npm test             # Vitest
 ## Project Structure
 ```
 app/
-  page.tsx                  # Landing (placeholder until the redesign)
+  page.tsx                  # Landing (limits read from lib/config)
+  terms/page.tsx            # Beta terms, plain language
+  opengraph-image.tsx       # Share card
   onboarding/               # Passkey wallet → fund → hire
   dashboard/page.tsx        # Live agent status, portfolio, activity, stop
   api/agents/route.ts       # GET state · POST create session · PATCH confirm/stop
   api/auth/[...all]/route.ts # Better Auth (passkeys, /token for Chipi, /jwks)
-  api/tick/route.ts         # Scheduler entry (public; claimDueAgent enforces TICK_INTERVAL_MINUTES)
+  api/tick/route.ts         # Scheduler entry (Bearer CRON_SECRET when set; claimDueAgent enforces TICK_INTERVAL_MINUTES; reports failed/overdue)
 
 lib/
   config.ts                 # Addresses, session limits, MAX_DEPOSIT_USD

@@ -86,10 +86,21 @@ export const MAX_DEPOSIT_USD = positiveEnv("MAX_DEPOSIT_USD", 100);
 
 /**
  * How often each agent decides (minutes). Vercel Hobby runs `vercel.json`'s
- * cron once a day; with any external scheduler you can go down to minutes.
- * /api/tick is public, so this, not the scheduler, is the real limit.
+ * cron once a day; with any external scheduler (Trigger.dev, QStash, a cron
+ * service) you can go down to minutes. Calls more often than this do nothing
+ * extra, so this, not the scheduler, is the real limit. Server-side only: the
+ * browser bundle does not see it, so pages pass `describeTickInterval()` down.
  */
 export const TICK_INTERVAL_MINUTES = positiveEnv("TICK_INTERVAL_MINUTES", 24 * 60);
+
+/** "every hour", "once a day", "every 15 minutes": for the landing and the hire screen. */
+export function describeTickInterval(minutes: number): string {
+  if (minutes === 24 * 60) return "once a day";
+  if (minutes === 60) return "every hour";
+  if (minutes % (24 * 60) === 0) return `every ${minutes / (24 * 60)} days`;
+  if (minutes % 60 === 0) return `every ${minutes / 60} hours`;
+  return `every ${minutes} minutes`;
+}
 
 /** A typo must not silently turn a limit off (NaN compares false with everything). */
 function positiveEnv(name: string, fallback: number): number {

@@ -40,7 +40,9 @@ npm run dev
 
 In the Chipi dashboard, set your API key's JWKS to `https://<your-app>/api/auth/jwks` with the **Better Auth** provider, so Chipi accepts your users' tokens. Tables are created on first use.
 
-`vercel.json` calls `GET /api/tick` once a day, which is what Vercel Hobby allows. The endpoint needs no secret: the database lets each agent decide at most once per `TICK_INTERVAL_MINUTES` (default 1440), however often it is called. To decide more often, lower it and call the endpoint from any scheduler (QStash, GitHub Actions, `curl` in a loop).
+`vercel.json` calls `GET /api/tick` once a day, which is what Vercel Hobby allows. The database lets each agent decide at most once per `TICK_INTERVAL_MINUTES` (default 1440), however often the endpoint is called. To decide more often, lower it (e.g. `60`) and call the endpoint from any scheduler: Trigger.dev, QStash, GitHub Actions, a cron service.
+
+Set `CRON_SECRET` in production: the endpoint then answers only callers sending `Authorization: Bearer <CRON_SECRET>` (Vercel Cron sends it by itself; give your scheduler the same header). The answer carries `failed` (agents whose tick crashed) and `overdue` (active agents with no tick for two intervals): have your scheduler alert when either is above zero.
 
 ```bash
 npm run lint && npm run typecheck && npm test
