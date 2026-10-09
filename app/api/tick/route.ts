@@ -28,16 +28,18 @@ const OVERDUE_SECONDS = TICK_INTERVAL_MINUTES * 60 * 2;
 
 /**
  * With CRON_SECRET set, only callers sending `Authorization: Bearer <CRON_SECRET>`
- * get through (Vercel Cron sends it by itself). Without it the route is public:
+ * get through (Vercel Cron sends it by itself), ignoring whitespace around the secret. Without it the route is public:
  * the database claim (`claimDueAgent`) makes extra calls harmless, each agent
  * runs at most once per TICK_INTERVAL_MINUTES, but anyone can pick the moment
  * and add load.
  */
 function authorized(request: Request): boolean {
-  const secret = process.env.CRON_SECRET;
+  // Pasted secrets often carry a trailing newline or space: compare trimmed values.
+  const secret = process.env.CRON_SECRET?.trim();
   if (!secret) return true;
-  const expected = Buffer.from(`Bearer ${secret}`);
-  const got = Buffer.from(request.headers.get("authorization") ?? "");
+  const header = request.headers.get("authorization") ?? "";
+  const expected = Buffer.from(secret);
+  const got = Buffer.from(header.startsWith("Bearer ") ? header.slice("Bearer ".length).trim() : "");
   return got.length === expected.length && timingSafeEqual(got, expected);
 }
 
