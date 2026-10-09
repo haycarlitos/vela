@@ -92,5 +92,13 @@ describe("GET /api/tick", () => {
       expect(res.status).toBe(200);
       expect(claimDueAgent).toHaveBeenCalled();
     });
+
+    it("ignores whitespace around the secret, as pasted into a dashboard", async () => {
+      process.env.CRON_SECRET = " s3cret\n";
+      expect((await call({ authorization: "Bearer s3cret" })).status).toBe(200);
+      process.env.CRON_SECRET = "s3cret";
+      expect((await call({ authorization: "Bearer  s3cret " })).status).toBe(200);
+      expect((await call({ authorization: "Bearer s3cre" })).status).toBe(401);
+    });
   });
 });
