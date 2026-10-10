@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { MIN_FUNDING_USD } from "@/lib/config";
+import { SendFromWallet } from "@/components/send-from-wallet";
 
 interface FundWalletProps {
   walletAddress: string;
@@ -33,8 +34,13 @@ export function FundWallet({ walletAddress, usdc, depositCapUsd, onRefresh }: Fu
         Send at least ${MIN_FUNDING_USD} of USDC on Starknet. The agent manages up to ${depositCapUsd}.
       </p>
 
+      <div className="mb-6">
+        <SendFromWallet to={walletAddress} roomUsd={Math.max(0, depositCapUsd - usdc)} onSent={onRefresh} />
+      </div>
+
+      <p className="text-xs text-[var(--text-muted)] mb-2">Or send USDC on Starknet to this address</p>
       <div className="glass p-4 mb-4">
-        <p className="text-xs text-[var(--text-muted)] mb-2">Your Starknet address</p>
+        <p className="text-xs text-[var(--text-muted)] mb-2">Your Vela wallet</p>
         <div className="flex items-center justify-center gap-2">
           <code className="font-mono text-sm break-all">{shortAddress}</code>
           <button onClick={copyAddress} className="text-xs text-[var(--vela-blue)] hover:underline shrink-0">

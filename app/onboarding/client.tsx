@@ -49,7 +49,7 @@ export default function OnboardingClient({ tickEvery }: { tickEvery: string }) {
         {userId && !state && !error && <p className="text-[var(--text-muted)]">Loading…</p>}
         {userId && error && <p className="text-[var(--vela-red)]">{error}</p>}
 
-        {state && userId && step === 1 && <CreateWallet userId={userId} onCreated={refresh} />}
+        {state && userId && step === 1 && <CreateWallet userId={userId} linkedWallet={state.linkedWallet} onCreated={refresh} />}
 
         {state?.wallet && step === 2 && (
           <FundWallet

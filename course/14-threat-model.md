@@ -12,6 +12,9 @@ Security is not "nothing can go wrong". It is knowing exactly what can, and maki
 | A bug in Vela | Make bad decisions | Exceed the caps | Same: two guards, `decide()` and the contract |
 | A malicious model answer | Suggest anything | Get past `decide()` | Module 9 |
 | A copy of an old session key | Nothing, once you stop the agent | | `revokeSession` |
+| A signed sign-in message (module 17) | Nothing | Sign in again with it | The nonce is consumed on first use and expires in 10 minutes |
+| A phishing site that gets you to sign | A sign-in to *its* domain | Sign you in to Vela | The domain and the chain are inside the signed message, and Vela checks both |
+| Your Vela session (stolen cookie) | Link a wallet if none is linked yet | Withdraw | Withdrawals need your passkey (the owner key) |
 
 ## The worst case, in numbers
 

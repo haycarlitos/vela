@@ -18,9 +18,9 @@ create wallet ──▶ wallet passkey ──PRF──▶ encryption key ──�
 
 ## The code
 
-- `lib/auth.ts`: Better Auth with three plugins. `anonymous` + `passkey`: an account with no email that gets a passkey right away. `jwt`: signs RS256 tokens with one key, which is what Chipi's Better Auth validator expects. `currentUserId()` is how API routes know who is calling.
+- `lib/auth.ts`: Better Auth with three plugins (plus `starknetAuth`, module 17). `anonymous` + `passkey`: an account with no email that gets a passkey right away. `jwt`: signs RS256 tokens with one key, which is what Chipi's Better Auth validator expects. `currentUserId()` is how API routes know who is calling.
 - `lib/auth-client.ts`: `getChipiToken()` fetches a fresh JWT right before each Chipi call.
-- `components/onboarding/create-account.tsx`: sign up = `signIn.anonymous()` + `passkey.addPasskey()`; sign in = `signIn.passkey()`.
+- `components/onboarding/create-account.tsx`: sign up = `signIn.anonymous()` + `passkey.addPasskey()`; sign in = `signIn.passkey()`. It also offers "Continue with Bramble, Braavos or Ready": signing in with an existing Starknet wallet instead of a passkey account (module 17).
 - `components/onboarding/create-wallet.tsx`: `useCreateWallet({ usePasskey: true })` creates the wallet passkey, derives the PRF key and creates the wallet. The SDK refuses (`PRF_UNSUPPORTED`) on a device without PRF instead of silently making a custodial wallet.
 
 ## Exercise

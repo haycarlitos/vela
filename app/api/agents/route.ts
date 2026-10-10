@@ -1,4 +1,4 @@
-import { currentUserId } from "@/lib/auth";
+import { currentUserId, linkedWallet } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { waitForTransaction } from "@chipi-stack/backend";
 import { chipi, sessionSecret } from "@/lib/chipi";
@@ -27,8 +27,8 @@ export async function GET() {
   const userId = await currentUserId();
   if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const wallet = await userWallet(userId);
-  if (!wallet) return NextResponse.json({ wallet: null });
+  const [wallet, linked] = await Promise.all([userWallet(userId), linkedWallet(userId)]);
+  if (!wallet) return NextResponse.json({ wallet: null, linkedWallet: linked });
 
   const [{ portfolio, prices }, agent, decisions] = await Promise.all([
     getPortfolio(wallet.publicKey),
@@ -46,6 +46,8 @@ export async function GET() {
 
   return NextResponse.json({
     wallet: { address: wallet.publicKey, walletType: wallet.walletType },
+    // The user's own Starknet wallet (Bramble, Braavos, Ready), if linked.
+    linkedWallet: linked,
     portfolio,
     prices,
     totalUsd: totalUsd(portfolio),
