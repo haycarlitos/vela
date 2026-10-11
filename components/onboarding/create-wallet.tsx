@@ -7,6 +7,8 @@ import { getChipiToken } from "@/lib/auth-client";
 
 interface CreateWalletProps {
   userId: string;
+  /** Set when the user signed in with their own Starknet wallet. */
+  linkedWallet?: string | null;
   onCreated: () => void;
 }
 
@@ -14,7 +16,7 @@ interface CreateWalletProps {
  * A self-custodial SHHH wallet. Its key is encrypted with the passkey's PRF
  * secret, so neither Chipi nor Vela can decrypt it.
  */
-export function CreateWallet({ userId, onCreated }: CreateWalletProps) {
+export function CreateWallet({ userId, linkedWallet, onCreated }: CreateWalletProps) {
   const { createWalletAsync, isLoading } = useCreateWallet();
   const [error, setError] = useState<string | null>(null);
 
@@ -54,6 +56,12 @@ export function CreateWallet({ userId, onCreated }: CreateWalletProps) {
       <p className="text-sm text-[var(--text-secondary)] mb-6">
         Secured by your passkey (Face ID or fingerprint). Only you can move your money.
       </p>
+      {linkedWallet && (
+        <p className="text-sm text-[var(--text-secondary)] mb-6">
+          This is the agent&apos;s wallet, with spending limits your own wallet can&apos;t set. Your wallet stays yours, and
+          withdrawals go back to it.
+        </p>
+      )}
 
       <button
         onClick={handleCreate}

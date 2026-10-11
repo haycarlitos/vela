@@ -15,11 +15,11 @@ const repoUrl = process.env.NEXT_PUBLIC_REPO_URL;
 const steps = [
   {
     title: "Create your wallet with your face",
-    body: "A passkey opens it. No seed phrase, no password. The key is encrypted in your browser: Vela never sees it.",
+    body: "A passkey opens it. No seed phrase, no password. Already on Starknet? Sign in with Bramble, Braavos or Ready instead.",
   },
   {
     title: "Add USDC",
-    body: `Send USDC on Starknet to your new address. Up to $${MAX_DEPOSIT_USD} while Vela is in beta.`,
+    body: `Send it from the wallet you already use, or to your new address. Up to $${MAX_DEPOSIT_USD} while Vela is in beta.`,
   },
   {
     title: "Hire the agent with one more Face ID",
@@ -46,7 +46,7 @@ const safety = [
   },
   {
     title: "Funds only come back to you",
-    body: "Yield goes through a small contract that can only return funds to your own wallet.",
+    body: "Yield goes through a small contract that can only return funds to your wallet, and withdrawals go to the wallet you signed in with.",
   },
 ];
 

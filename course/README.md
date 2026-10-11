@@ -39,6 +39,8 @@ Either way, every exercise runs on mainnet with cents. Nothing here is a simulat
 | 14 | [Threat model](./14-threat-model.md) | What a leaked key can and cannot do | A red-team of your agent |
 | 15 | [Monitoring](./15-monitoring.md) | Reading state from the chain | The dashboard's data |
 | 16 | [Next steps](./16-next-steps.md) | Where to go from here | |
+| **F** | **Meet users where they are** | | |
+| 17 | [Bring your own wallet](./17-bring-your-wallet.md) | Sign in with Starknet, counterfactual accounts, funding and withdrawals | `lib/auth-starknet.ts`, `lib/starknet-wallet.ts` |
 
 ## How each module works
 

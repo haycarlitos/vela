@@ -6,7 +6,7 @@ Open-source course and DeFi agent on a self-custodial Starknet wallet: passkey (
 - **Framework**: Next.js 16 (App Router, Turbopack)
 - **Language**: TypeScript (strict)
 - **Auth**: Better Auth in the app (anonymous account + passkey, JWT plugin RS256 with one key); `/api/auth/jwks` is registered in the Chipi dashboard (Better Auth provider). API routes call `currentUserId()`
-- **Chipi**: `@chipi-stack/nextjs` (browser) and `@chipi-stack/backend` (server) 14.15+
+- **Chipi**: `@chipi-stack/nextjs` (browser) and `@chipi-stack/backend` (server) 14.16+ (Sign in with Starknet needs 14.16)
 - **AI**: Chipi AI API through `sdk.ai` (no direct model provider)
 - **Database**: Postgres via `pg` (`DATABASE_URL`)
 - **Styling**: Tailwind CSS + Framer Motion (liquid glass design)
@@ -23,6 +23,7 @@ Open-source course and DeFi agent on a self-custodial Starknet wallet: passkey (
 - The model advises, `lib/policy.ts` decides. Never act on `sdk.ai.think` output without `decide()`
 - A tx hash is not a result: always `waitForTransaction`
 - No workarounds around the SDK: if Vela needs something the SDK lacks, add it to the SDK
+- The user's own wallet (Bramble, Braavos, Ready) is identity, funding source and withdrawal destination, never the agent's wallet: only a Chipi wallet enforces the caps
 - `course/` must match the code: when you change a file a lesson cites, update the lesson
 
 ## Commands
@@ -56,10 +57,12 @@ lib/
   db.ts                     # Postgres (agents, decisions)
   chipi.ts                  # Server SDK + secrets
   auth.ts, auth-client.ts   # Better Auth server (getAuth, currentUserId) and client (getChipiToken)
+  auth-starknet.ts          # Sign in with Starknet (Better Auth plugin: /starknet/nonce, /starknet/verify)
+  starknet-wallet.ts        # The user's own wallet in the browser (discovery, sign, send USDC); Bramble-strict
   use-agent-state.ts        # Client hook for GET /api/agents
 
 contracts/vault-router/      # Cairo router for Vesu (course module 13); snforge fork tests
-course/                      # The course: 00-setup … 16-next-steps, each lesson cites real code
+course/                      # The course: 00-setup … 17-bring-your-wallet, each lesson cites real code
 
 components/
   onboarding/               # create-account, create-wallet, fund-wallet, configure-agent

@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 /** Shape of GET /api/agents (see app/api/agents/route.ts). */
 export interface AgentState {
   wallet: { address: string; walletType?: string } | null;
+  /** The user's own Starknet wallet, where withdrawals go (0x + 64 hex). */
+  linkedWallet?: string | null;
   portfolio?: {
     USDC: { balance: number; usd: number };
     ETH: { balance: number; usd: number };

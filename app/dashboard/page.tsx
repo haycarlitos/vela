@@ -7,6 +7,7 @@ import { AgentStatus } from "@/components/dashboard/agent-status";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { PortfolioCard } from "@/components/dashboard/portfolio-card";
 import { StopAgent } from "@/components/dashboard/stop-agent";
+import { LinkedWallet } from "@/components/dashboard/linked-wallet";
 import { useAgentState, type AgentState } from "@/lib/use-agent-state";
 import { authClient, getChipiToken } from "@/lib/auth-client";
 
@@ -52,7 +53,7 @@ export default function DashboardPage() {
     return (
       <Centered>
         <Link href="/onboarding" className="text-[var(--vela-blue)] hover:underline">
-          Sign in with your passkey
+          Sign in
         </Link>
       </Centered>
     );
@@ -127,6 +128,12 @@ export default function DashboardPage() {
               {agent.active ? "Session ended. Hire again" : "Hire your agent again"}
             </Link>
           )}
+          <LinkedWallet
+            linkedWallet={state.linkedWallet ?? null}
+            wallet={wallet ?? null}
+            liquidUsdc={state.portfolio?.USDC.balance ?? 0}
+            onChanged={refresh}
+          />
         </div>
       </div>
 
