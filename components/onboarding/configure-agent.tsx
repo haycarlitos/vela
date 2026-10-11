@@ -30,6 +30,8 @@ export function ConfigureAgent({ balanceUsd, tickEvery, onHired }: ConfigureAgen
   const [status, setStatus] = useState("");
   const [acceptedRisk, setAcceptedRisk] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // True from the click until the hire is confirmed or fails: one hire at a time.
+  const [hiring, setHiring] = useState(false);
 
   const { wallet } = useChipiWallet({ externalUserId: userId ?? null, getBearerToken: getChipiToken });
   const { registerSession, supportsSession, isRegistering } = useChipiSession({
@@ -43,6 +45,8 @@ export function ConfigureAgent({ balanceUsd, tickEvery, onHired }: ConfigureAgen
   });
 
   const handleHire = async () => {
+    if (hiring) return;
+    setHiring(true);
     setError(null);
     try {
       // 1. Vela's server creates the session key and keeps the private half.
@@ -86,6 +90,7 @@ export function ConfigureAgent({ balanceUsd, tickEvery, onHired }: ConfigureAgen
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to hire the agent");
       setStatus("");
+      setHiring(false);
     }
   };
 
@@ -100,18 +105,34 @@ export function ConfigureAgent({ balanceUsd, tickEvery, onHired }: ConfigureAgen
       <div className="mb-6">
         <label className="text-sm font-medium text-[var(--text-secondary)] mb-3 block">Strategy</label>
         <div className="space-y-2">
-          {(Object.keys(STRATEGIES) as Strategy[]).map((key) => (
-            <button
-              key={key}
-              onClick={() => setStrategy(key)}
-              className={`w-full glass p-3 text-left transition-all ${
-                strategy === key ? "border-[var(--vela-blue)] bg-[var(--vela-blue)]/10" : ""
-              }`}
-            >
-              <p className="font-medium text-sm">{STRATEGIES[key].label}</p>
-              <p className="text-xs text-[var(--text-muted)]">{STRATEGIES[key].description}</p>
-            </button>
-          ))}
+          {(Object.keys(STRATEGIES) as Strategy[]).map((key) => {
+            const selected = strategy === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => setStrategy(key)}
+                disabled={hiring}
+                // Inline style: .glass sets its own border and background, which win over utility classes.
+                style={selected ? { borderColor: "var(--vela-blue)", boxShadow: "0 0 0 1px var(--vela-blue)" } : undefined}
+                className="w-full glass p-3 text-left transition-all flex items-start gap-3 disabled:opacity-60"
+              >
+                <span
+                  aria-hidden
+                  className={`mt-1 h-4 w-4 shrink-0 rounded-full border-2 ${
+                    selected ? "border-[var(--vela-blue)] bg-[var(--vela-blue)]" : "border-[var(--text-muted)]"
+                  }`}
+                />
+                <span>
+                  <span className={`block font-medium text-sm ${selected ? "text-[var(--vela-blue)]" : ""}`}>
+                    {STRATEGIES[key].label}
+                  </span>
+                  <span className="block text-xs text-[var(--text-muted)]">{STRATEGIES[key].description}</span>
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -160,10 +181,10 @@ export function ConfigureAgent({ balanceUsd, tickEvery, onHired }: ConfigureAgen
 
       <button
         onClick={handleHire}
-        disabled={isRegistering || !wallet || !acceptedRisk || !(maxTradeUsd >= 0.5)}
+        disabled={hiring || isRegistering || !wallet || !acceptedRisk || !(maxTradeUsd >= 0.5)}
         className="w-full py-4 rounded-xl bg-[var(--vela-blue)] text-[var(--bg-primary)] font-semibold text-lg hover:brightness-110 transition-all disabled:opacity-50"
       >
-        {isRegistering ? "Waiting for your passkey…" : "Hire agent"}
+        {isRegistering ? "Waiting for your passkey…" : hiring ? "Hiring…" : "Hire agent"}
       </button>
 
       {error && <p className="mt-3 text-sm text-[var(--vela-red)] text-center">{error}</p>}
