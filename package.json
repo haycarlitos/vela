@@ -12,8 +12,8 @@
   },
   "dependencies": {
     "@better-auth/passkey": "^1.7.7",
-    "@chipi-stack/backend": "^14.15.1",
-    "@chipi-stack/nextjs": "^14.15.1",
+    "@chipi-stack/backend": "^14.16.0",
+    "@chipi-stack/nextjs": "^14.16.0",
     "@starknet-io/get-starknet-discovery": "6.0.6",
     "better-auth": "^1.7.7",
     "framer-motion": "^12.38.0",

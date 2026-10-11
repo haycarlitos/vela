@@ -6,7 +6,7 @@ Open-source course and DeFi agent on a self-custodial Starknet wallet: passkey (
 - **Framework**: Next.js 16 (App Router, Turbopack)
 - **Language**: TypeScript (strict)
 - **Auth**: Better Auth in the app (anonymous account + passkey, JWT plugin RS256 with one key); `/api/auth/jwks` is registered in the Chipi dashboard (Better Auth provider). API routes call `currentUserId()`
-- **Chipi**: `@chipi-stack/nextjs` (browser) and `@chipi-stack/backend` (server) 14.15+
+- **Chipi**: `@chipi-stack/nextjs` (browser) and `@chipi-stack/backend` (server) 14.16+ (Sign in with Starknet needs 14.16)
 - **AI**: Chipi AI API through `sdk.ai` (no direct model provider)
 - **Database**: Postgres via `pg` (`DATABASE_URL`)
 - **Styling**: Tailwind CSS + Framer Motion (liquid glass design)
