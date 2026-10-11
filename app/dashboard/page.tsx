@@ -102,10 +102,6 @@ export default function DashboardPage() {
         </span>
       </header>
 
-      <p className="text-xs text-[var(--vela-gold)]">
-        The wallet contract (SHHH V8.4) is pending its external audit. Keep at most ${state.depositCapUsd} in it.
-      </p>
-
       <AgentStatus
         totalValueUsd={state.totalUsd ?? 0}
         totalDecisions={decisions.length}
