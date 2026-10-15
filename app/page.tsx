@@ -10,20 +10,25 @@ import { MAX_DEPOSIT_USD, SESSION_SECONDS, TICK_INTERVAL_MINUTES, describeTickIn
 
 const sessionDays = Math.round(SESSION_SECONDS / 86_400);
 const tickEvery = describeTickInterval(TICK_INTERVAL_MINUTES);
-const repoUrl = process.env.NEXT_PUBLIC_REPO_URL;
+// A fork sets NEXT_PUBLIC_REPO_URL to its own repository.
+const repoUrl = process.env.NEXT_PUBLIC_REPO_URL || "https://github.com/haycarlitos/vela";
 
 const steps = [
   {
-    title: "Create your wallet with your face",
-    body: "A passkey opens it. No seed phrase, no password. Already on Starknet? Sign in with Bramble, Braavos or Ready instead.",
+    title: "Create your wallet",
+    body: "Open it with a passkey: your face, fingerprint or device PIN. No seed phrase, no password. Already on Starknet? Sign in with Bramble, Braavos or Ready.",
   },
   {
     title: "Add USDC",
     body: `Send it from the wallet you already use, or to your new address. Up to $${MAX_DEPOSIT_USD} while Vela is in beta.`,
   },
   {
-    title: "Hire the agent with one more Face ID",
-    body: `It gets a key of its own that expires in ${sessionDays} days and can only spend up to the caps you choose.`,
+    title: "Hire the agent",
+    body: `Pick a strategy and a cap, then approve once. The agent gets its own key that expires in ${sessionDays} days and can't spend past your caps.`,
+  },
+  {
+    title: "Watch it, stop it, cash out",
+    body: "Your dashboard shows every decision and why. Stop the agent with one tap, and withdraw to the wallet you came with.",
   },
 ];
 
@@ -95,7 +100,7 @@ export default function Home() {
         {/* How it works */}
         <section className="px-6 pb-20 max-w-5xl mx-auto">
           <h2 className="text-2xl font-bold mb-8 text-center">How it works</h2>
-          <ol className="grid gap-4 sm:grid-cols-3">
+          <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {steps.map((step, i) => (
               <li key={step.title} className="glass p-6">
                 <span className="font-mono text-sm text-[var(--vela-blue)]">{i + 1}</span>
