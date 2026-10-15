@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CreateAccount } from "@/components/onboarding/create-account";
@@ -19,6 +20,13 @@ export default function OnboardingClient({ tickEvery }: { tickEvery: string }) {
   const { state, error, refresh } = useAgentState(15_000, Boolean(userId));
 
   const step = !userId ? 0 : !state?.wallet ? 1 : !isFunded(state.totalUsd ?? 0) ? 2 : 3;
+
+  // "Sign in" lands here. Someone whose agent is already running belongs on
+  // the dashboard, not on a second hire form.
+  const running = Boolean(state?.agent?.active && state.session?.isActive);
+  useEffect(() => {
+    if (running) router.replace("/dashboard");
+  }, [running, router]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -60,12 +68,25 @@ export default function OnboardingClient({ tickEvery }: { tickEvery: string }) {
           />
         )}
 
-        {state?.wallet && step === 3 && (
-          <ConfigureAgent
-            balanceUsd={state.totalUsd ?? 0}
-            tickEvery={tickEvery}
-            onHired={() => router.push("/dashboard")}
-          />
+        {running && <p className="text-[var(--text-muted)]">Your agent is running. Opening your dashboard…</p>}
+
+        {state?.wallet && step === 3 && !running && (
+          <div className="w-full max-w-lg space-y-4">
+            {state.agent && (
+              <p className="glass p-4 text-sm text-[var(--text-secondary)]">
+                Your last agent isn&apos;t running: it was stopped, or its 7-day session ended. Hire it again below, or{" "}
+                <Link href="/dashboard" className="underline text-[var(--vela-blue)]">
+                  see its history in your dashboard
+                </Link>
+                .
+              </p>
+            )}
+            <ConfigureAgent
+              balanceUsd={state.totalUsd ?? 0}
+              tickEvery={tickEvery}
+              onHired={() => router.push("/dashboard")}
+            />
+          </div>
         )}
       </main>
     </div>
