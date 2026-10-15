@@ -11,7 +11,15 @@
 
 > SHHH V8.4 is pending its external audit. By default the agent manages wallets up to $100 (`MAX_DEPOSIT_USD`). The agent can lose money within its limits. See [SECURITY.md](./SECURITY.md).
 
-## How it works
+## How Vela works
+
+1. **You open a wallet with a passkey** (face, fingerprint or device PIN), or sign in with the Starknet wallet you already use (Bramble, Braavos, Ready). The wallet is a smart contract on Starknet; its key is encrypted with your passkey, so only you can use it.
+2. **You add a few dollars of USDC.**
+3. **You hire the agent with one approval.** That approval gives the agent its own key, a *session key*, and writes its limits into your wallet contract: which functions it may call, how much USDC, ETH and STRK per trade and per day, and when it expires (7 days).
+4. **The agent runs on a schedule.** Each time, it reads your balances and market data, asks an AI model for one decision, and checks that decision against fixed rules in code (`lib/policy.ts`). Only a decision that passes becomes a transaction: a swap on AVNU, or USDC into a Vesu vault. If the model is wrong, the rules hold; if the rules were wrong, the wallet contract still refuses anything past your caps.
+5. **You watch, stop and withdraw.** The dashboard shows every decision with its reason and transaction. One approval revokes the agent's key, and withdrawals go back to your own wallet. You never pay gas.
+
+### Under the hood
 
 ```
 Browser                                   Vela server                              Starknet
@@ -27,6 +35,14 @@ passkey prompt: registerSession(key, whitelist, caps) ────────�
                                      waitForTransaction → log
 "Stop" passkey prompt: revokeSession(key) ───────────────────────────────────────▶ session zeroed
 ```
+
+## Ship your first agent
+
+- **What you need to know:** read TypeScript and run `npm`. No blockchain or AI experience.
+- **Accounts:** [Chipi](https://dashboard.chipipay.com) (wallets, AI API, gas) and Vercel, which creates the Postgres database for you.
+- **Money:** $5–10 of USDC on Starknet to try it, plus a few dollars of Chipi AI credits. A development key (`pk_dev_...`) answers AI calls with a free sample decision, enough to wire everything up. Gas is sponsored.
+- **About 15 minutes** to your own running copy: [module 0](./course/00-setup.md) is a Deploy button, two keys and one setting in the Chipi dashboard.
+- **Then the [course](./course/README.md)**, at your pace: 18 modules in six parts (blockchain from zero, delegating without handing over keys, AI that acts, your first Cairo contract, running it safely, bringing your own wallet). Each one names the 1–3 files it covers, has an exercise on mainnet with cents, and a test that passes when you got it right. Deploy first and read along, or rebuild the files yourself.
 
 ## Run it
 
