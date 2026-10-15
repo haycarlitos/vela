@@ -7,6 +7,7 @@ import { CreateAccount } from "@/components/onboarding/create-account";
 import { CreateWallet } from "@/components/onboarding/create-wallet";
 import { FundWallet } from "@/components/onboarding/fund-wallet";
 import { ConfigureAgent } from "@/components/onboarding/configure-agent";
+import { SignOutButton } from "@/components/sign-out-button";
 import { useAgentState } from "@/lib/use-agent-state";
 import { isFunded } from "@/lib/config";
 import { authClient } from "@/lib/auth-client";
@@ -34,19 +35,22 @@ export default function OnboardingClient({ tickEvery }: { tickEvery: string }) {
         <Link href="/" className="text-xl font-bold gradient-text">
           Vela
         </Link>
-        <div className="flex items-center gap-2">
-          {STEPS.map((label, i) => (
-            <div key={label} className="flex items-center gap-1">
-              <div
-                className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                  i <= step ? "bg-[var(--vela-blue)] text-[var(--bg-primary)]" : "glass text-[var(--text-muted)]"
-                }`}
-              >
-                {i + 1}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            {STEPS.map((label, i) => (
+              <div key={label} className="flex items-center gap-1">
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                    i <= step ? "bg-[var(--vela-blue)] text-[var(--bg-primary)]" : "glass text-[var(--text-muted)]"
+                  }`}
+                >
+                  {i + 1}
+                </div>
+                <span className="text-xs text-[var(--text-muted)] hidden sm:inline">{label}</span>
               </div>
-              <span className="text-xs text-[var(--text-muted)] hidden sm:inline">{label}</span>
-            </div>
-          ))}
+            ))}
+          </div>
+          {userId && <SignOutButton />}
         </div>
       </header>
 

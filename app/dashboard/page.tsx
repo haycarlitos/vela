@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { getWalletEncryptKey, useChipiSession, useChipiWallet } from "@chipi-stack/nextjs";
 import { AgentStatus } from "@/components/dashboard/agent-status";
+import { SignOutButton } from "@/components/sign-out-button";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { PortfolioCard } from "@/components/dashboard/portfolio-card";
 import { StopAgent } from "@/components/dashboard/stop-agent";
@@ -97,9 +98,12 @@ export default function DashboardPage() {
         <Link href="/" className="text-xl font-bold gradient-text">
           Vela
         </Link>
-        <span className="text-xs text-[var(--text-muted)] font-mono">
-          {state.wallet.address.slice(0, 10)}…{state.wallet.address.slice(-6)}
-        </span>
+        <div className="flex items-center gap-4">
+          <span className="text-xs text-[var(--text-muted)] font-mono">
+            {state.wallet.address.slice(0, 10)}…{state.wallet.address.slice(-6)}
+          </span>
+          <SignOutButton />
+        </div>
       </header>
 
       <AgentStatus
