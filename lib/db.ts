@@ -1,6 +1,7 @@
 import "server-only";
 import pg from "pg";
 import type { Strategy } from "./strategies";
+import type { TrustedRole, TrustedWalletRecord } from "./trusted-wallets";
 
 // Any Postgres (Neon, Railway, Supabase, Vercel Postgres) via DATABASE_URL.
 export const pool = new pg.Pool({
@@ -57,6 +58,18 @@ function ensureSchema(): Promise<void> {
         ai_cost_usd NUMERIC
       );
       CREATE INDEX IF NOT EXISTS decisions_user ON decisions (user_id, created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS trusted_wallets (
+        user_id TEXT NOT NULL,
+        wallet_address TEXT NOT NULL,
+        signer_address TEXT NOT NULL,
+        wallet_name TEXT NOT NULL,
+        stark_pubkey TEXT NOT NULL,
+        role TEXT NOT NULL,
+        propose_tx_hash TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (user_id, signer_address)
+      );
     `);
   })().catch((err) => {
     schemaReady = null;
@@ -220,4 +233,61 @@ export async function recentDecisions(userId: string, limit = 30): Promise<Decis
     [userId, limit]
   );
   return rows;
+}
+
+// ---------- trusted wallets ----------
+
+interface TrustedWalletRow {
+  signer_address: string;
+  wallet_name: string;
+  stark_pubkey: string;
+  role: TrustedRole;
+  propose_tx_hash: string | null;
+}
+
+function toTrustedWallet(row: TrustedWalletRow): TrustedWalletRecord {
+  return {
+    signerAddress: row.signer_address,
+    walletName: row.wallet_name,
+    starkPubkey: row.stark_pubkey,
+    role: row.role,
+    proposeTxHash: row.propose_tx_hash,
+  };
+}
+
+export async function listTrustedWallets(userId: string): Promise<TrustedWalletRecord[]> {
+  const { rows } = await query<TrustedWalletRow>(
+    `SELECT signer_address, wallet_name, stark_pubkey, role, propose_tx_hash
+     FROM trusted_wallets WHERE user_id = $1 ORDER BY created_at`,
+    [userId]
+  );
+  return rows.map(toTrustedWallet);
+}
+
+/** Saving the same wallet again (new key or role) starts over: any earlier proposal is forgotten. */
+export async function saveTrustedWallet(userId: string, walletAddress: string, record: Omit<TrustedWalletRecord, "proposeTxHash">): Promise<void> {
+  await query(
+    `INSERT INTO trusted_wallets (user_id, wallet_address, signer_address, wallet_name, stark_pubkey, role)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     ON CONFLICT (user_id, signer_address) DO UPDATE SET
+       wallet_address = EXCLUDED.wallet_address,
+       wallet_name = EXCLUDED.wallet_name,
+       stark_pubkey = EXCLUDED.stark_pubkey,
+       role = EXCLUDED.role,
+       propose_tx_hash = NULL`,
+    [userId, walletAddress, record.signerAddress, record.walletName, record.starkPubkey, record.role]
+  );
+}
+
+/** `null` forgets an expired proposal. Returns false if the user has no such trusted wallet. */
+export async function setTrustedWalletProposal(userId: string, signerAddress: string, txHash: string | null): Promise<boolean> {
+  const { rowCount } = await query(
+    `UPDATE trusted_wallets SET propose_tx_hash = $3 WHERE user_id = $1 AND signer_address = $2`,
+    [userId, signerAddress, txHash]
+  );
+  return (rowCount ?? 0) > 0;
+}
+
+export async function deleteTrustedWallet(userId: string, signerAddress: string): Promise<void> {
+  await query(`DELETE FROM trusted_wallets WHERE user_id = $1 AND signer_address = $2`, [userId, signerAddress]);
 }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getWalletEncryptKey, useChipiSession, useChipiWallet } from "@chipi-stack/nextjs";
 import { AgentStatus } from "@/components/dashboard/agent-status";
 import { SignOutButton } from "@/components/sign-out-button";
+import { TrustedWallets } from "@/components/dashboard/trusted-wallets";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { PortfolioCard } from "@/components/dashboard/portfolio-card";
 import { StopAgent } from "@/components/dashboard/stop-agent";
@@ -134,6 +135,7 @@ export default function DashboardPage() {
             liquidUsdc={state.portfolio?.USDC.balance ?? 0}
             onChanged={refresh}
           />
+          <TrustedWallets wallet={wallet ?? null} />
         </div>
       </div>
 

@@ -41,6 +41,7 @@ Either way, every exercise runs on mainnet with cents. Nothing here is a simulat
 | 16 | [Next steps](./16-next-steps.md) | Where to go from here | |
 | **F** | **Meet users where they are** | | |
 | 17 | [Bring your own wallet](./17-bring-your-wallet.md) | Sign in with Starknet, counterfactual accounts, funding and withdrawals | `lib/auth-starknet.ts`, `lib/starknet-wallet.ts` |
+| 18 | [Trusted wallets](./18-trusted-wallets.md) | Multiple owners, roles, governance timelocks | `lib/trusted-wallets.ts`, `trusted-wallets.tsx` |
 
 ## How each module works
 

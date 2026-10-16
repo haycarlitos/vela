@@ -23,7 +23,7 @@ Open-source course and DeFi agent on a self-custodial Starknet wallet: passkey (
 - The model advises, `lib/policy.ts` decides. Never act on `sdk.ai.think` output without `decide()`
 - A tx hash is not a result: always `waitForTransaction`
 - No workarounds around the SDK: if Vela needs something the SDK lacks, add it to the SDK
-- The user's own wallet (Bramble, Braavos, Ready) is identity, funding source and withdrawal destination, never the agent's wallet: only a Chipi wallet enforces the caps
+- The user's own wallet (Bramble, Braavos, Ready) is identity, funding source and withdrawal destination, never the agent's wallet: only a Chipi wallet enforces the caps. It can also be a trusted wallet of the Chipi wallet (recovery wallet or co-owner, `lib/trusted-wallets.ts`); the agent's funds and caps stay in the Chipi wallet
 - `course/` must match the code: when you change a file a lesson cites, update the lesson
 
 ## Commands
@@ -46,6 +46,7 @@ app/
   api/agents/route.ts       # GET state · POST create session · PATCH confirm/stop
   api/auth/[...all]/route.ts # Better Auth (passkeys, /token for Chipi, /jwks)
   api/tick/route.ts         # Scheduler entry (Bearer CRON_SECRET when set; claimDueAgent enforces TICK_INTERVAL_MINUTES; reports failed/overdue)
+  api/trusted-wallets/route.ts # Trusted wallets: stored records; a proposal hash is accepted only after its receipt shows ADD_OWNER
 
 lib/
   config.ts                 # Addresses, session limits, MAX_DEPOSIT_USD
@@ -59,12 +60,13 @@ lib/
   auth.ts, auth-client.ts   # Better Auth server (getAuth, currentUserId) and client (getChipiToken)
   auth-starknet.ts          # Sign in with Starknet (Better Auth plugin: /starknet/nonce, /starknet/verify)
   starknet-wallet.ts        # The user's own wallet in the browser (discovery, sign, send USDC); Bramble-strict
+  trusted-wallets.ts        # Recovery wallet / co-owner: roles, the owner input, trustedStep()
   use-agent-state.ts        # Client hook for GET /api/agents
 
 contracts/vault-router/      # Cairo router for Vesu (course module 13); snforge fork tests
-course/                      # The course: 00-setup … 17-bring-your-wallet, each lesson cites real code
+course/                      # The course: 00-setup … 18-trusted-wallets, each lesson cites real code
 
 components/
   onboarding/               # create-account, create-wallet, fund-wallet, configure-agent
-  dashboard/                # agent-status, portfolio-card, activity-feed, stop-agent
+  dashboard/                # agent-status, portfolio-card, activity-feed, stop-agent, linked-wallet, trusted-wallets
 ```
