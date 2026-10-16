@@ -7,7 +7,7 @@
 - **The model advises, code decides.** The agent thinks with Chipi's AI API (`sdk.ai.think`, live market signals and yields), and a deterministic policy (`lib/policy.ts`) decides what actually reaches the chain.
 - **No gas.** Every transaction is sponsored by Chipi's paymaster.
 
-**New here? Start with the [course](./course/README.md):** 18 short modules, from "what is a wallet" to writing a Cairo contract, each with a mainnet exercise and a test.
+**New here? Start with the [course](./course/README.md):** 19 short modules, from "what is a wallet" to writing a Cairo contract, each with a mainnet exercise and a test.
 
 > SHHH V8.4 is pending its external audit. By default the agent manages wallets up to $100 (`MAX_DEPOSIT_USD`). The agent can lose money within its limits. See [SECURITY.md](./SECURITY.md).
 
@@ -42,7 +42,7 @@ passkey prompt: registerSession(key, whitelist, caps) ────────�
 - **Accounts:** [Chipi](https://dashboard.chipipay.com) (wallets, AI API, gas) and Vercel, which creates the Postgres database for you.
 - **Money:** $5–10 of USDC on Starknet to try it, plus a few dollars of Chipi AI credits. A development key (`pk_dev_...`) answers AI calls with a free sample decision, enough to wire everything up. Gas is sponsored.
 - **About 15 minutes** to your own running copy: [module 0](./course/00-setup.md) is a Deploy button, two keys and one setting in the Chipi dashboard.
-- **Then the [course](./course/README.md)**, at your pace: 18 modules in six parts (blockchain from zero, delegating without handing over keys, AI that acts, your first Cairo contract, running it safely, bringing your own wallet). Each one names the 1–3 files it covers, has an exercise on mainnet with cents, and a test that passes when you got it right. Deploy first and read along, or rebuild the files yourself.
+- **Then the [course](./course/README.md)**, at your pace: 19 modules in six parts (blockchain from zero, delegating without handing over keys, AI that acts, your first Cairo contract, running it safely, bringing your own wallet and adding it as a backup key). Each one names the 1–3 files it covers, has an exercise on mainnet with cents, and a test that passes when you got it right. Deploy first and read along, or rebuild the files yourself.
 - **The model** is Chipi's AI API. [Module 8](./course/08-model.md#using-your-own-model-key) shows how a fork switches to its own provider key, and what it gives up.
 
 ## Run it

@@ -159,6 +159,9 @@ const provider = new RpcProvider({
   nodeUrl: process.env.NEXT_PUBLIC_STARKNET_RPC_URL || "https://api.cartridge.gg/x/starknet/mainnet",
 });
 
+/** Mainnet RPC for reads from the browser (balances, the wallet's owners). */
+export const starknetProvider = provider;
+
 async function balanceOf(token: string, owner: string): Promise<bigint> {
   const [low, high] = await provider.callContract({
     contractAddress: token,
