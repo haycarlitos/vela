@@ -43,6 +43,7 @@ passkey prompt: registerSession(key, whitelist, caps) ────────�
 - **Money:** $5–10 of USDC on Starknet to try it, plus a few dollars of Chipi AI credits. A development key (`pk_dev_...`) answers AI calls with a free sample decision, enough to wire everything up. Gas is sponsored.
 - **About 15 minutes** to your own running copy: [module 0](./course/00-setup.md) is a Deploy button, two keys and one setting in the Chipi dashboard.
 - **Then the [course](./course/README.md)**, at your pace: 18 modules in six parts (blockchain from zero, delegating without handing over keys, AI that acts, your first Cairo contract, running it safely, bringing your own wallet). Each one names the 1–3 files it covers, has an exercise on mainnet with cents, and a test that passes when you got it right. Deploy first and read along, or rebuild the files yourself.
+- **The model** is Chipi's AI API. [Module 8](./course/08-model.md#using-your-own-model-key) shows how a fork switches to its own provider key, and what it gives up.
 
 ## Run it
 
