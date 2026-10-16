@@ -21,7 +21,9 @@ passkey ──▶ propose_add_verifier_class + propose_add_owner ──▶ 48 h 
 
 - `lib/trusted-wallets.ts`: the two roles, the owner the contract adds (`trustedOwnerInput`: kind, `[stark key, account address]`, role, weight 1, label), and `trustedStep`, which turns the stored record, the wallet's owners and the proposal's ops into one of `confirmed`, `waiting`, `ready`, `expired` or `active`.
 - `components/dashboard/trusted-wallets.tsx`: the three clicks. Confirm the key (one signature in the user's wallet, which approves nothing), propose (one passkey prompt), activate after 48 hours (one passkey prompt). It reads the owners with `readShhhOwners` and the timelocks from the proposal's receipt with `parseOpProposedEvents`.
-- `app/api/trusted-wallets/route.ts`: stores the record in Postgres, so the user can propose on one device and activate on another. It accepts a proposal's hash only after `waitForTransaction` shows an `ADD_OWNER` op on that user's wallet.
+- `app/api/trusted-wallets/route.ts`: stores the record in Postgres, so the user can propose on one device and activate on another. The database must never stop describing what the chain can still do:
+  - a proposal's hash is accepted only if its receipt holds the `ADD_OWNER` op for exactly that key, role and label (`addOwnerPayload` equals the op's payload);
+  - a record with a proposal can't be overwritten, and it is forgotten or deleted only when `readPendingOp` says the proposal can no longer add the owner (cancelled or expired, never executed).
 
 ## Exercise
 

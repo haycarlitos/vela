@@ -1,11 +1,19 @@
 import { describe, it, expect } from "vitest";
-import { starkSnip12OwnerCommitment, type ShhhOwnerRecord, type ShhhProposedOp } from "@chipi-stack/backend";
+import {
+  addOwnerPayload,
+  starkSnip12OwnerCommitment,
+  type ShhhOwnerRecord,
+  type ShhhPendingOp,
+  type ShhhProposedOp,
+} from "@chipi-stack/backend";
 import {
   TRUSTED_KIND,
   TRUSTED_ROLES,
   findTrustedOwner,
   formatWait,
+  isProposalLive,
   trustedOwnerInput,
+  trustedOwnerPayload,
   trustedStep,
   type TrustedWalletRecord,
 } from "../trusted-wallets";
@@ -69,35 +77,86 @@ describe("findTrustedOwner", () => {
 
 describe("trustedStep", () => {
   const H48 = 48 * 3600;
+  const payload = trustedOwnerPayload(record);
+  const addOwner = (validAfter: number, expiresAt: number, p = payload) => ({ ...op("ADD_OWNER", validAfter, expiresAt), payload: p });
+  const live = (expiresAt: number): ShhhPendingOp => ({
+    opKind: "ADD_OWNER",
+    proposer: 0,
+    proposedAt: NOW - 10,
+    validAfter: NOW,
+    expiresAt,
+    payload,
+    executed: false,
+    cancelled: false,
+  });
+  const step = (ops: ShhhProposedOp[], pending: ShhhPendingOp | null = live(NOW + H48), r = record) =>
+    trustedStep({ record: r, owners: [], proposal: { ops, pending }, now: NOW });
 
   it("active once the owner is on the wallet, whatever was stored", () => {
-    expect(trustedStep({ record, owners: [owner()], ops: [], now: NOW })).toEqual({ kind: "active", ownerId: 1 });
+    expect(trustedStep({ record, owners: [owner()], proposal: undefined, now: NOW })).toEqual({ kind: "active", ownerId: 1 });
   });
 
-  it("confirmed while nothing was proposed", () => {
-    expect(trustedStep({ record: { ...record, proposeTxHash: null }, owners: [], ops: [], now: NOW }).kind).toBe("confirmed");
-    // A stored hash whose receipt has no ADD_OWNER can't be activated: start over.
-    expect(trustedStep({ record, owners: [], ops: [op("ADD_VERIFIER", NOW, NOW + H48)], now: NOW }).kind).toBe("confirmed");
+  it("confirmed while nothing was proposed, or when no op adds exactly this key and role", () => {
+    expect(trustedStep({ record: { ...record, proposeTxHash: null }, owners: [], proposal: undefined, now: NOW }).kind).toBe("confirmed");
+    expect(step([op("ADD_VERIFIER", NOW, NOW + H48)]).kind).toBe("confirmed");
+    // Another wallet's (or another role's) ADD_OWNER in the same receipt doesn't count.
+    expect(step([addOwner(NOW, NOW + H48, payload + 1n)]).kind).toBe("confirmed");
+    expect(step([addOwner(NOW - 1, NOW + H48)], live(NOW + H48), { ...record, role: "OWNER" }).kind).toBe("confirmed");
+  });
+
+  it("unknown when the stored proposal couldn't be read: no actions", () => {
+    expect(trustedStep({ record, owners: [], proposal: undefined, now: NOW })).toEqual({ kind: "unknown" });
+  });
+
+  it("cancelled when an owner cancelled it on-chain", () => {
+    expect(step([addOwner(NOW - 1, NOW + H48)], { ...live(NOW + H48), cancelled: true })).toEqual({ kind: "cancelled" });
   });
 
   it("waits for the later of the two timelocks", () => {
-    const ops = [op("ADD_VERIFIER", NOW + 100, NOW + H48), op("ADD_OWNER", NOW + 200, NOW + H48)];
-    expect(trustedStep({ record, owners: [], ops, now: NOW })).toEqual({ kind: "waiting", secondsLeft: 200, expiresAt: NOW + H48 });
+    const ops = [op("ADD_VERIFIER", NOW + 100, NOW + H48), addOwner(NOW + 200, NOW + H48)];
+    expect(step(ops)).toEqual({ kind: "waiting", secondsLeft: 200, expiresAt: NOW + H48 });
   });
 
   it("ready from the timelock until the earlier expiry", () => {
-    const ops = [op("ADD_VERIFIER", NOW - 10, NOW + 50), op("ADD_OWNER", NOW - 10, NOW + 100)];
-    expect(trustedStep({ record, owners: [], ops, now: NOW })).toEqual({ kind: "ready", expiresAt: NOW + 50 });
+    const ops = [op("ADD_VERIFIER", NOW - 10, NOW + 50), addOwner(NOW - 10, NOW + 100)];
+    expect(step(ops)).toEqual({ kind: "ready", expiresAt: NOW + 50 });
   });
 
   it("expired once either op expired", () => {
-    const ops = [op("ADD_VERIFIER", NOW - 100, NOW), op("ADD_OWNER", NOW - 100, NOW + 100)];
-    expect(trustedStep({ record, owners: [], ops, now: NOW })).toEqual({ kind: "expired", expiresAt: NOW });
+    const ops = [op("ADD_VERIFIER", NOW - 100, NOW), addOwner(NOW - 100, NOW + 100)];
+    expect(step(ops)).toEqual({ kind: "expired", expiresAt: NOW });
   });
 
   it("ignores ops of other kinds in the same transaction", () => {
-    const ops = [op("ADD_OWNER", NOW - 10, NOW + 100), op("SET_THRESHOLD", NOW + 999, NOW + 5)];
-    expect(trustedStep({ record, owners: [], ops, now: NOW }).kind).toBe("ready");
+    const ops = [addOwner(NOW - 10, NOW + 100), op("SET_THRESHOLD", NOW + 999, NOW + 5)];
+    expect(step(ops).kind).toBe("ready");
+  });
+});
+
+describe("isProposalLive", () => {
+  const pending: ShhhPendingOp = {
+    opKind: "ADD_OWNER",
+    proposer: 0,
+    proposedAt: NOW - 10,
+    validAfter: NOW,
+    expiresAt: NOW + 100,
+    payload: 1n,
+    executed: false,
+    cancelled: false,
+  };
+  it("live until executed, cancelled or expired; an unknown op is not live", () => {
+    expect(isProposalLive(pending, NOW)).toBe(true);
+    expect(isProposalLive({ ...pending, executed: true }, NOW)).toBe(false);
+    expect(isProposalLive({ ...pending, cancelled: true }, NOW)).toBe(false);
+    expect(isProposalLive(pending, NOW + 100)).toBe(false);
+    expect(isProposalLive(null, NOW)).toBe(false);
+  });
+});
+
+describe("trustedOwnerPayload", () => {
+  it("is the SDK's addOwnerPayload of the owner this record adds", () => {
+    expect(trustedOwnerPayload(record)).toBe(addOwnerPayload(trustedOwnerInput(record)));
+    expect(trustedOwnerPayload(record)).not.toBe(trustedOwnerPayload({ ...record, role: "OWNER" }));
   });
 });
 

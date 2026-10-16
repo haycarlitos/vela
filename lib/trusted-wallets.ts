@@ -1,8 +1,10 @@
 import {
+  addOwnerPayload,
   starkSnip12OwnerCommitment,
   starkSnip12PubkeyFelts,
   type NewOwnerInput,
   type ShhhOwnerRecord,
+  type ShhhPendingOp,
   type ShhhProposedOp,
 } from "@chipi-stack/backend";
 
@@ -63,6 +65,26 @@ export function trustedOwnerInput(record: Pick<TrustedWalletRecord, "starkPubkey
   };
 }
 
+/** The payload the ADD_OWNER op for this record commits to: it ties a proposal to this key, role and label. */
+export function trustedOwnerPayload(record: Pick<TrustedWalletRecord, "starkPubkey" | "signerAddress" | "role">): bigint {
+  return addOwnerPayload(trustedOwnerInput(record));
+}
+
+/** The ADD_OWNER op in a proposal's receipt that adds exactly this record, if any. */
+export function findAddOwnerOp(record: TrustedWalletRecord, ops: ShhhProposedOp[]): ShhhProposedOp | undefined {
+  const payload = trustedOwnerPayload(record);
+  return ops.find((op) => op.opKind === "ADD_OWNER" && op.payload === payload);
+}
+
+/**
+ * Whether a stored proposal can still become an owner. `pending` is the
+ * ADD_OWNER op's on-chain state (`readPendingOp`), or null if the wallet has
+ * no such op. Executed ones are no longer live either: the owner was added.
+ */
+export function isProposalLive(pending: ShhhPendingOp | null, now: number): boolean {
+  return pending !== null && !pending.executed && !pending.cancelled && now < pending.expiresAt;
+}
+
 /** The on-chain owner this record became, if it is active. */
 export function findTrustedOwner(
   record: Pick<TrustedWalletRecord, "starkPubkey" | "signerAddress">,
@@ -75,6 +97,10 @@ export function findTrustedOwner(
 export type TrustedStep =
   /** On the wallet. */
   | { kind: "active"; ownerId: number }
+  /** The proposal's receipt or state couldn't be read: no actions until it can. */
+  | { kind: "unknown" }
+  /** An owner cancelled the proposal: propose again or remove. */
+  | { kind: "cancelled" }
   /** Key confirmed; nothing proposed yet. */
   | { kind: "confirmed" }
   /** Proposed; the 48-hour timelock is running. */
@@ -85,21 +111,27 @@ export type TrustedStep =
   | { kind: "expired"; expiresAt: number };
 
 /**
- * Where a trusted wallet stands. `ops` are the governance ops the proposal
- * transaction emitted (`parseOpProposedEvents` on its receipt); `now` is unix
- * seconds.
+ * Where a trusted wallet stands. `proposal` is what was read for its stored
+ * proposal: the ops its transaction emitted (`parseOpProposedEvents` on the
+ * receipt) and the ADD_OWNER op's on-chain state (`readPendingOp`), or
+ * undefined if that couldn't be read. `now` is unix seconds.
  */
 export function trustedStep(params: {
   record: TrustedWalletRecord;
   owners: ShhhOwnerRecord[];
-  ops: ShhhProposedOp[];
+  proposal: { ops: ShhhProposedOp[]; pending: ShhhPendingOp | null } | undefined;
   now: number;
 }): TrustedStep {
-  const { record, owners, now } = params;
+  const { record, owners, proposal, now } = params;
   const owner = findTrustedOwner(record, owners);
   if (owner) return { kind: "active", ownerId: owner.ownerId };
-  const ops = params.ops.filter((op) => op.opKind === "ADD_OWNER" || op.opKind === "ADD_VERIFIER");
-  if (!record.proposeTxHash || !ops.some((op) => op.opKind === "ADD_OWNER")) return { kind: "confirmed" };
+  if (!record.proposeTxHash) return { kind: "confirmed" };
+  if (!proposal) return { kind: "unknown" };
+  // Only the op that adds exactly this key and role counts (and the verifier it needs).
+  const addOwner = findAddOwnerOp(record, proposal.ops);
+  if (!addOwner) return { kind: "confirmed" };
+  if (proposal.pending?.cancelled) return { kind: "cancelled" };
+  const ops = [addOwner, ...proposal.ops.filter((op) => op.opKind === "ADD_VERIFIER")];
   // Both ops must be executable and unexpired: the owner is checked through the verifier.
   const validAfter = Math.max(...ops.map((op) => op.validAfter));
   const expiresAt = Math.min(...ops.map((op) => op.expiresAt));

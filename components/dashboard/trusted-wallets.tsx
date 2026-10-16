@@ -9,12 +9,14 @@ import {
   buildProposeAddVerifierClassCall,
   isShhhVerifierDeclared,
   parseOpProposedEvents,
+  readPendingOp,
   readShhhOwners,
   readVerifierClass,
   resolveStarkSnip12Signer,
   starkSnip12ApprovalTypedData,
   waitForTransaction,
   type ShhhOwnerRecord,
+  type ShhhPendingOp,
   type ShhhProposedOp,
 } from "@chipi-stack/backend";
 import { getWalletEncryptKey, useCallAnyContract, type ChipiWalletData } from "@chipi-stack/nextjs";
@@ -33,6 +35,7 @@ import {
   PASSKEY_OWNER_ID,
   TRUSTED_KIND,
   TRUSTED_ROLES,
+  findAddOwnerOp,
   formatWait,
   trustedOwnerInput,
   trustedStep,
@@ -41,10 +44,17 @@ import {
   type TrustedWalletRecord,
 } from "@/lib/trusted-wallets";
 
+interface Proposal {
+  /** Ops the proposal transaction emitted. */
+  ops: ShhhProposedOp[];
+  /** The ADD_OWNER op's on-chain state (null if it isn't there). */
+  pending: ShhhPendingOp | null;
+}
+
 interface Chain {
   owners: ShhhOwnerRecord[];
-  /** Ops each proposal emitted, by signer address. */
-  ops: Record<string, ShhhProposedOp[]>;
+  /** By signer address; missing when the proposal couldn't be read (the record shows "unknown"). */
+  proposals: Record<string, Proposal | undefined>;
 }
 
 const hex = (value: bigint) => `0x${value.toString(16)}`;
@@ -92,16 +102,23 @@ export function TrustedWallets({ wallet }: { wallet: ChipiWalletData | null }) {
     if (!walletAddress) return null;
     const { trustedWallets = [] } = await api("GET");
     const owners = await readShhhOwners(starknetProvider, walletAddress);
-    const ops: Chain["ops"] = {};
+    const proposals: Chain["proposals"] = {};
     await Promise.all(
       trustedWallets
         .filter((r) => r.proposeTxHash)
         .map(async (r) => {
-          // Op ids include the block time: read them back from the proposal's receipt.
-          ops[r.signerAddress] = parseOpProposedEvents((await waitForTransaction(r.proposeTxHash!)).events, walletAddress);
+          try {
+            // Op ids include the block time: read them back from the proposal's receipt.
+            const ops = parseOpProposedEvents((await waitForTransaction(r.proposeTxHash!)).events, walletAddress);
+            const addOwner = findAddOwnerOp(r, ops);
+            const pending = addOwner ? await readPendingOp(starknetProvider, walletAddress, addOwner.opId) : null;
+            proposals[r.signerAddress] = { ops, pending };
+          } catch {
+            // Left unread: that record shows "unknown" and offers no actions.
+          }
         })
     );
-    return { records: trustedWallets, chain: { owners, ops } };
+    return { records: trustedWallets, chain: { owners, proposals } };
   }, [walletAddress]);
 
   const apply = (next: { records: TrustedWalletRecord[]; chain: Chain } | null) => {
@@ -222,7 +239,7 @@ export function TrustedWallets({ wallet }: { wallet: ChipiWalletData | null }) {
     run(async () => {
       if (!walletAddress) return;
       const addVerifier = ops.find((op) => op.opKind === "ADD_VERIFIER");
-      const addOwner = ops.find((op) => op.opKind === "ADD_OWNER");
+      const addOwner = findAddOwnerOp(record, ops);
       if (!addOwner) throw new Error("No proposal found. Propose it again.");
       const calls = [];
       // Activation calls are open to anyone: someone may have run this one already.
@@ -239,8 +256,10 @@ export function TrustedWallets({ wallet }: { wallet: ChipiWalletData | null }) {
     run(async () => {
       if (!walletAddress) return;
       if (step.kind === "waiting" || step.kind === "ready") {
-        const pending = ops.filter((op) => op.opKind === "ADD_OWNER" || op.opKind === "ADD_VERIFIER");
-        if (pending.length) await signWithPasskey(pending.map((op) => buildCancelPendingOpCall({ walletAddress, opId: op.opId })));
+        // Cancel the op that adds this wallet. A pending verifier op is harmless (the class is
+        // already declared) and may have run already, which would make cancelling it revert.
+        const addOwner = findAddOwnerOp(record, ops);
+        if (addOwner) await signWithPasskey([buildCancelPendingOpCall({ walletAddress, opId: addOwner.opId })]);
       }
       await api("DELETE", { signerAddress: record.signerAddress });
       setStatus(`${record.walletName} removed.`);
@@ -268,8 +287,9 @@ export function TrustedWallets({ wallet }: { wallet: ChipiWalletData | null }) {
       ) : (
         <ul className="space-y-3">
           {records.map((record) => {
-            const ops = chain.ops[record.signerAddress] ?? [];
-            const step = trustedStep({ record, owners: chain.owners, ops, now });
+            const proposal = chain.proposals[record.signerAddress];
+            const ops = proposal?.ops ?? [];
+            const step = trustedStep({ record, owners: chain.owners, proposal, now });
             return (
               <li key={record.signerAddress} className="glass p-4 space-y-2 text-sm">
                 <div className="flex items-center justify-between gap-2">
@@ -280,6 +300,9 @@ export function TrustedWallets({ wallet }: { wallet: ChipiWalletData | null }) {
                   <span className="text-xs text-[var(--text-secondary)]">{TRUSTED_ROLES[record.role].name}</span>
                 </div>
                 {step.kind === "active" && <p className="text-[var(--vela-green)]">Active on your wallet.</p>}
+                {step.kind === "unknown" && (
+                  <p className="text-[var(--text-secondary)]">Couldn&apos;t read this proposal from Starknet. Reload to try again.</p>
+                )}
                 {step.kind === "confirmed" && (
                   <button
                     onClick={() => propose(record)}
@@ -303,17 +326,19 @@ export function TrustedWallets({ wallet }: { wallet: ChipiWalletData | null }) {
                     Activate with your passkey
                   </button>
                 )}
-                {step.kind === "expired" && (
+                {(step.kind === "expired" || step.kind === "cancelled") && (
                   <div className="space-y-2">
                     <p className="text-[var(--text-secondary)]">
-                      The proposal expired on {new Date(step.expiresAt * 1000).toLocaleString()} before it was activated.
+                      {step.kind === "expired"
+                        ? `The proposal expired on ${new Date(step.expiresAt * 1000).toLocaleString()} before it was activated.`
+                        : "The proposal was cancelled."}
                     </p>
                     <button onClick={() => proposeAgain(record)} disabled={busy} className="text-[var(--vela-blue)] hover:underline">
                       Propose again
                     </button>
                   </div>
                 )}
-                {step.kind !== "active" && (
+                {step.kind !== "active" && step.kind !== "unknown" && (
                   <button
                     onClick={() => remove(record, step, ops)}
                     disabled={busy}

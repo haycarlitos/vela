@@ -46,7 +46,7 @@ app/
   api/agents/route.ts       # GET state · POST create session · PATCH confirm/stop
   api/auth/[...all]/route.ts # Better Auth (passkeys, /token for Chipi, /jwks)
   api/tick/route.ts         # Scheduler entry (Bearer CRON_SECRET when set; claimDueAgent enforces TICK_INTERVAL_MINUTES; reports failed/overdue)
-  api/trusted-wallets/route.ts # Trusted wallets: stored records; a proposal hash is accepted only after its receipt shows ADD_OWNER
+  api/trusted-wallets/route.ts # Trusted wallets: a proposal hash is accepted only if its receipt adds exactly that key and role; records are forgotten only when readPendingOp says the proposal can't add the owner anymore
 
 lib/
   config.ts                 # Addresses, session limits, MAX_DEPOSIT_USD
