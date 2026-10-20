@@ -1,15 +1,13 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
+import { appUrl } from "@/lib/app-url";
 
 const title = "Vela: an AI agent that invests for you, inside limits your wallet enforces";
 const description =
   "A self-custodial Starknet wallet you open with your face, and an AI agent that trades and earns yield within spending caps written on-chain. Open source, built with Chipi.";
 
-// Same rule as lib/auth's appUrl (not imported: it pulls in the database).
-const siteUrl =
-  process.env.BETTER_AUTH_URL ??
-  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000");
+const siteUrl = appUrl();
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

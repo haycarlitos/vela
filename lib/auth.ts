@@ -10,15 +10,9 @@ import { derivedSecret } from "./chipi";
 import { pool } from "./db";
 import { callContract } from "./portfolio";
 
-/**
- * Where the app runs. Passkeys are bound to this hostname, and Chipi checks
- * the tokens against `${appUrl()}/api/auth/jwks`.
- */
-export function appUrl(): string {
-  if (process.env.BETTER_AUTH_URL) return process.env.BETTER_AUTH_URL;
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
-  return "http://localhost:3000";
-}
+import { appUrl } from "./app-url";
+
+export { appUrl };
 
 function options() {
   return {
