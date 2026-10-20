@@ -30,11 +30,24 @@ export async function GET() {
   const [wallet, linked] = await Promise.all([userWallet(userId), linkedWallet(userId)]);
   if (!wallet) return NextResponse.json({ wallet: null, linkedWallet: linked });
 
-  const [{ portfolio, prices }, agent, decisions] = await Promise.all([
-    getPortfolio(wallet.publicKey),
+  const [portfolioResult, agent, decisions] = await Promise.all([
+    // Balances come from Chipi, which reads Starknet. When that read fails, say
+    // so and let the page poll again, instead of a bare 500 (or guessing zero,
+    // which would send a funded user back to the "Add USDC" step).
+    getPortfolio(wallet.publicKey).catch((err: unknown) => {
+      console.error("GET /api/agents: balances unavailable", err);
+      return null;
+    }),
     getAgent(userId),
     recentDecisions(userId),
   ]);
+  if (!portfolioResult) {
+    return NextResponse.json(
+      { error: "Couldn't read your balances from Starknet right now. Retrying…" },
+      { status: 503, headers: { "Retry-After": "15" } }
+    );
+  }
+  const { portfolio, prices } = portfolioResult;
 
   const session =
     agent && BigInt(agent.wallet_address) === BigInt(wallet.publicKey)

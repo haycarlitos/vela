@@ -37,6 +37,7 @@ npm test             # Vitest
 
 ## Project Structure
 ```
+proxy.ts                    # Production page visits on any other host (e.g. <project>-<team>.vercel.app) move to appUrl(); API routes untouched
 app/
   page.tsx                  # Landing (limits read from lib/config)
   terms/page.tsx            # Beta terms, plain language
@@ -57,6 +58,7 @@ lib/
   portfolio.ts, vesu.ts     # Balances, prices, Vesu position and calls
   db.ts                     # Postgres (agents, decisions)
   chipi.ts                  # Server SDK + secrets
+  app-url.ts                # appUrl(): the one origin passkeys, SIWS and Better Auth accept
   auth.ts, auth-client.ts   # Better Auth server (getAuth, currentUserId) and client (getChipiToken)
   auth-starknet.ts          # Sign in with Starknet (Better Auth plugin: /starknet/nonce, /starknet/verify)
   starknet-wallet.ts        # The user's own wallet in the browser (discovery, sign, send USDC); Bramble-strict
