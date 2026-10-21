@@ -25,8 +25,8 @@ Either way, every exercise runs on mainnet with cents. Nothing here is a simulat
 | **B** | **Delegate without handing over your keys** | | |
 | 4 | [Session keys](./04-session-keys.md) | A second key with limited powers | `lib/config.ts` (the session) |
 | 5 | [Spending caps](./05-spending-caps.md) | Limits the wallet contract enforces | `spendingPolicies` in `lib/policy.ts` |
-| 6 | [Hire the agent with one prompt](./06-hire.md) | Session + caps in one transaction, verified on-chain | `app/api/agents/route.ts`, `configure-agent.tsx` |
-| 7 | [Stop, expire, renew](./07-stop.md) | Revocation and expiry | `stop-agent`, the stop path of `runTick` |
+| 6 | [Hire the agent with one prompt](./06-hire.md) | Session + caps in one transaction, verified on-chain | `app/api/agents/route.ts`, `use-hire-agent.ts` |
+| 7 | [Stop, expire, renew](./07-stop.md) | Revocation, expiry and renewal | `stop-agent`, the stop path of `runTick`, `session-notice` |
 | **C** | **AI that acts** | | |
 | 8 | [A model as a decision maker](./08-model.md) | Prompts, structured output, Chipi's AI API | `lib/brain.ts` |
 | 9 | [Harnessing](./09-harnessing.md) | Context, schemas, validation, guardrails, logs | `decide` in `lib/policy.ts` |
@@ -41,7 +41,7 @@ Either way, every exercise runs on mainnet with cents. Nothing here is a simulat
 | 16 | [Next steps](./16-next-steps.md) | Where to go from here | |
 | **F** | **Meet users where they are** | | |
 | 17 | [Bring your own wallet](./17-bring-your-wallet.md) | Sign in with Starknet, counterfactual accounts, funding and withdrawals | `lib/auth-starknet.ts`, `lib/starknet-wallet.ts` |
-| 18 | [Trusted wallets](./18-trusted-wallets.md) | Multiple owners, roles, governance timelocks | `lib/trusted-wallets.ts`, `trusted-wallets.tsx` |
+| 18 | [Trusted wallets](./18-trusted-wallets.md) | Multiple owners, roles, governance timelocks | `lib/trusted-wallets.ts`, `trusted-wallets.tsx`, `recovery-alert.tsx` |
 
 ## How each module works
 
