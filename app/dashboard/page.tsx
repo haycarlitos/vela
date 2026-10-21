@@ -10,8 +10,11 @@ import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { PortfolioCard } from "@/components/dashboard/portfolio-card";
 import { StopAgent } from "@/components/dashboard/stop-agent";
 import { LinkedWallet } from "@/components/dashboard/linked-wallet";
+import { RecoveryAlert } from "@/components/dashboard/recovery-alert";
+import { SessionNotice } from "@/components/dashboard/session-notice";
 import { useAgentState, type AgentState } from "@/lib/use-agent-state";
 import { authClient, getChipiToken } from "@/lib/auth-client";
+import { sessionNotice } from "@/lib/notices";
 
 const ACTION_NAMES: Record<string, string> = { supply: "supply_vesu", withdraw: "withdraw_vesu" };
 
@@ -28,8 +31,12 @@ function feed(decisions: NonNullable<AgentState["decisions"]>) {
   }));
 }
 
+function nowSeconds(): number {
+  return Math.floor(Date.now() / 1000);
+}
+
 function timeLeft(validUntil: number): string {
-  const seconds = validUntil - Math.floor(Date.now() / 1000);
+  const seconds = validUntil - nowSeconds();
   if (seconds <= 0) return "expired";
   const days = Math.floor(seconds / 86_400);
   const hours = Math.floor((seconds % 86_400) / 3_600);
@@ -76,6 +83,7 @@ export default function DashboardPage() {
   const active = agent.active && Boolean(state.session?.isActive);
   const decisions = state.decisions ?? [];
   const aiCostUsd = decisions.reduce((sum, d) => sum + (d.aiCostUsd ?? 0), 0);
+  const notice = sessionNotice(agent.active, state.session ?? null, nowSeconds());
 
   const stop = async () => {
     setStopError(null);
@@ -107,6 +115,8 @@ export default function DashboardPage() {
         </div>
       </header>
 
+      <RecoveryAlert wallet={wallet ?? null} />
+
       <AgentStatus
         totalValueUsd={state.totalUsd ?? 0}
         totalDecisions={decisions.length}
@@ -119,16 +129,13 @@ export default function DashboardPage() {
         isActive={active}
       />
 
+      {notice && <SessionNotice notice={notice} agent={agent} wallet={wallet ?? null} onRenewed={refresh} />}
+
       <div className="grid gap-6 md:grid-cols-2">
         {state.portfolio && <PortfolioCard portfolio={{ ...state.portfolio, totalValueUsd: state.totalUsd ?? 0, usdc: state.portfolio.USDC, eth: { ...state.portfolio.ETH, price: state.prices?.ETH ?? 0 }, strk: { ...state.portfolio.STRK, price: state.prices?.STRK ?? 0 }, vesuDeposited: state.portfolio.vesuUsd }} />}
         <div className="space-y-4">
           <StopAgent isActive={active} onStop={stop} />
           {stopError && <p className="text-sm text-[var(--vela-red)]">{stopError}</p>}
-          {!active && (
-            <Link href="/onboarding" className="block glass p-4 text-center text-[var(--vela-blue)]">
-              {agent.active ? "Session ended. Hire again" : "Hire your agent again"}
-            </Link>
-          )}
           <LinkedWallet
             linkedWallet={state.linkedWallet ?? null}
             wallet={wallet ?? null}

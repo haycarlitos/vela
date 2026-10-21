@@ -21,7 +21,7 @@ Why not trust the browser's "done"? Because the browser could be buggy, outdated
 
 ## The code
 
-- `components/onboarding/configure-agent.tsx`, `handleHire`: the three steps above. `useChipiSession({ wallet, getEncryptKey })`: `getEncryptKey` unlocks the wallet passkey (the one prompt). It passes `wallet.credentialId`, so it works on any device with that passkey.
+- `lib/use-hire-agent.ts`, `hire`: the three steps above, shared by the hire screen (`components/onboarding/configure-agent.tsx`) and the dashboard's Renew button. `useChipiSession({ wallet, getEncryptKey })`: `getEncryptKey` unlocks the wallet passkey (the one prompt). It passes `wallet.credentialId`, so it works on any device with that passkey.
 - `app/api/agents/route.ts`: `POST` (create the session, return the limits) and `PATCH` (verify on-chain, then activate).
 
 ## Exercise

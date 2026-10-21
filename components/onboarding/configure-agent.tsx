@@ -2,25 +2,17 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { getWalletEncryptKey, useChipiSession, useChipiWallet } from "@chipi-stack/nextjs";
+import { useChipiWallet } from "@chipi-stack/nextjs";
 import { motion } from "framer-motion";
 import { STRATEGIES, type Strategy } from "@/lib/strategies";
 import { authClient, getChipiToken } from "@/lib/auth-client";
+import { useHireAgent } from "@/lib/use-hire-agent";
 
 interface ConfigureAgentProps {
   balanceUsd: number;
   /** How often the agent decides, in words ("every hour"). */
   tickEvery: string;
   onHired: () => void;
-}
-
-interface HireResponse {
-  sessionPublicKey: string;
-  validUntil: number;
-  maxCalls: number;
-  allowedEntrypoints: string[];
-  spendingPolicies: Array<{ token: string; maxPerCall: string; maxPerWindow: string; windowSeconds: number }>;
-  error?: string;
 }
 
 export function ConfigureAgent({ balanceUsd, tickEvery, onHired }: ConfigureAgentProps) {
@@ -34,57 +26,14 @@ export function ConfigureAgent({ balanceUsd, tickEvery, onHired }: ConfigureAgen
   const [hiring, setHiring] = useState(false);
 
   const { wallet } = useChipiWallet({ externalUserId: userId ?? null, getBearerToken: getChipiToken });
-  const { registerSession, supportsSession, isRegistering } = useChipiSession({
-    wallet,
-    // The passkey prompt appears only when the user hires the agent. The
-    // credential id comes from the wallet, so this works on any device.
-    getEncryptKey: () =>
-      getWalletEncryptKey(wallet?.credentialId ?? undefined, { prfSupported: wallet?.prfSupported ?? undefined }),
-    getBearerToken: getChipiToken,
-    autoCheckStatus: false,
-  });
+  const { hire, supportsSession, isRegistering } = useHireAgent(wallet);
 
   const handleHire = async () => {
     if (hiring) return;
     setHiring(true);
     setError(null);
     try {
-      // 1. Vela's server creates the session key and keeps the private half.
-      setStatus("Preparing your agent's key…");
-      const res = await fetch("/api/agents", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ strategy, maxTradeUsd }),
-      });
-      const hire = (await res.json()) as HireResponse;
-      if (!res.ok) throw new Error(hire.error ?? `HTTP ${res.status}`);
-
-      // 2. One passkey prompt: the session and its caps, in one transaction.
-      setStatus("Confirm with your passkey…");
-      const txHash = await registerSession({
-        sessionPublicKey: hire.sessionPublicKey,
-        validUntil: hire.validUntil,
-        maxCalls: hire.maxCalls,
-        allowedEntrypoints: hire.allowedEntrypoints,
-        spendingPolicies: hire.spendingPolicies.map((p) => ({
-          token: p.token,
-          maxPerCall: BigInt(p.maxPerCall),
-          maxPerWindow: BigInt(p.maxPerWindow),
-          windowSeconds: p.windowSeconds,
-        })),
-      });
-
-      // 3. Vela checks the chain before the agent starts.
-      setStatus("Waiting for Starknet…");
-      const confirm = await fetch("/api/agents", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionPublicKey: hire.sessionPublicKey, txHash, active: true }),
-      });
-      if (!confirm.ok) {
-        throw new Error(((await confirm.json()) as { error?: string }).error ?? `HTTP ${confirm.status}`);
-      }
-
+      await hire(strategy, maxTradeUsd, setStatus);
       setStatus("Your agent is sailing.");
       onHired();
     } catch (err) {

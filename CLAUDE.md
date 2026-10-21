@@ -63,6 +63,9 @@ lib/
   auth-starknet.ts          # Sign in with Starknet (Better Auth plugin: /starknet/nonce, /starknet/verify)
   starknet-wallet.ts        # The user's own wallet in the browser (discovery, sign, send USDC); Bramble-strict
   trusted-wallets.ts        # Recovery wallet / co-owner: roles, the owner input, trustedStep()
+  notices.ts                # sessionNotice() (ending/expired/out of calls/stopped) and recoveryAlert()
+  use-hire-agent.ts         # Hire (and renew): POST, one passkey prompt, PATCH
+  use-passkey-calls.ts      # Passkey-signed wallet calls, waited for
   use-agent-state.ts        # Client hook for GET /api/agents
 
 contracts/vault-router/      # Cairo router for Vesu (course module 13); snforge fork tests
@@ -70,5 +73,5 @@ course/                      # The course: 00-setup … 18-trusted-wallets, each
 
 components/
   onboarding/               # create-account, create-wallet, fund-wallet, configure-agent
-  dashboard/                # agent-status, portfolio-card, activity-feed, stop-agent, linked-wallet, trusted-wallets
+  dashboard/                # agent-status, portfolio-card, activity-feed, stop-agent, linked-wallet, trusted-wallets, recovery-alert, session-notice
 ```

@@ -19,8 +19,8 @@ import {
   type ShhhPendingOp,
   type ShhhProposedOp,
 } from "@chipi-stack/backend";
-import { getWalletEncryptKey, useCallAnyContract, type ChipiWalletData } from "@chipi-stack/nextjs";
-import { getChipiToken } from "@/lib/auth-client";
+import type { ChipiWalletData } from "@chipi-stack/nextjs";
+import { usePasskeyCalls } from "@/lib/use-passkey-calls";
 import {
   connectWallet,
   deploymentData,
@@ -86,7 +86,7 @@ async function api(method: "GET" | "POST" | "PATCH" | "DELETE", body?: unknown) 
  */
 export function TrustedWallets({ wallet }: { wallet: ChipiWalletData | null }) {
   const walletAddress = wallet?.publicKey ?? null;
-  const { callAnyContractAsync } = useCallAnyContract();
+  const signCalls = usePasskeyCalls(wallet);
   const [records, setRecords] = useState<TrustedWalletRecord[] | null>(null);
   const [chain, setChain] = useState<Chain | null>(null);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
@@ -174,24 +174,7 @@ export function TrustedWallets({ wallet }: { wallet: ChipiWalletData | null }) {
   };
 
   /** One passkey prompt signs `calls` as the wallet's owner, and the chain must accept them. */
-  const signWithPasskey = async (calls: Parameters<typeof callAnyContractAsync>[0]["params"]["calls"]) => {
-    if (!wallet || !walletAddress) throw new Error("Your Vela wallet isn't loaded yet.");
-    setStatus("Confirm with your passkey…");
-    const encryptKey = await getWalletEncryptKey(wallet.credentialId ?? undefined, {
-      prfSupported: wallet.prfSupported ?? undefined,
-    });
-    if (!encryptKey) throw new Error("Passkey confirmation was cancelled.");
-    const bearerToken = await getChipiToken();
-    if (!bearerToken) throw new Error("Your session expired. Sign in again.");
-    const txHash = await callAnyContractAsync({
-      params: { encryptKey, wallet, contractAddress: walletAddress, calls },
-      bearerToken,
-    });
-    setStatus("Sent. Waiting for Starknet…");
-    const receipt = await waitForTransaction(txHash);
-    if (!receipt.success) throw new Error(`The wallet refused it: ${receipt.revertReason ?? "unknown reason"}`);
-    return txHash;
-  };
+  const signWithPasskey = (calls: Parameters<typeof signCalls>[0]) => signCalls(calls, setStatus);
 
   // 1. The wallet signs one approval; the key that verifies it is the one we add.
   const confirmKey = (discovered: DiscoveredWallet) =>
