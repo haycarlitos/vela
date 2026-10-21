@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { buildCancelRecoveryCall, readPendingRecovery } from "@chipi-stack/backend";
 import type { ChipiWalletData } from "@chipi-stack/nextjs";
 import { formatDate, recoveryAlert, type RecoveryAlert as Alert } from "@/lib/notices";
@@ -25,6 +25,8 @@ export function RecoveryAlert({ wallet }: { wallet: ChipiWalletData | null }) {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Only the latest read may set the banner: a poll that started before a cancel must not bring it back.
+  const latestRead = useRef(0);
 
   const read = useCallback(async () => {
     if (!walletAddress) return null;
@@ -34,15 +36,17 @@ export function RecoveryAlert({ wallet }: { wallet: ChipiWalletData | null }) {
 
   useEffect(() => {
     let cancelled = false;
-    const load = () =>
-      read()
+    const load = () => {
+      const id = ++latestRead.current;
+      return read()
         .then((next) => {
-          if (cancelled || !next) return;
+          if (cancelled || !next || id !== latestRead.current) return;
           setAlert(next.alert);
           setNow(next.at);
         })
         // A failed read keeps what was last shown; the next poll tries again.
         .catch((err: unknown) => console.warn("recovery check failed", err));
+    };
     void load();
     const timer = setInterval(load, POLL_MS);
     return () => {
@@ -60,9 +64,10 @@ export function RecoveryAlert({ wallet }: { wallet: ChipiWalletData | null }) {
     try {
       // The passkey is owner 0, a ROLE_OWNER: it may cancel any recovery.
       await signWithPasskey([buildCancelRecoveryCall({ walletAddress, ownerId: PASSKEY_OWNER_ID })], setStatus);
-      const next = await read();
-      setAlert(next?.alert ?? null);
-      setStatus(next?.alert ? null : "Recovery cancelled. Your wallet's keys are unchanged.");
+      // The receipt succeeded: the recovery is cancelled. Drop reads still in flight; the next poll checks again.
+      latestRead.current += 1;
+      setAlert(null);
+      setStatus("Recovery cancelled. Your wallet's keys are unchanged.");
     } catch (err) {
       setStatus(null);
       setError(err instanceof Error ? err.message : String(err));
