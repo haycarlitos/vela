@@ -142,7 +142,7 @@ export default function DashboardPage() {
             liquidUsdc={state.portfolio?.USDC.balance ?? 0}
             onChanged={refresh}
           />
-          <TrustedWallets wallet={wallet ?? null} />
+          <TrustedWallets wallet={wallet ?? null} linkedWallet={state.linkedWallet ?? null} />
         </div>
       </div>
 

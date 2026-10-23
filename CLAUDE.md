@@ -24,6 +24,7 @@ Open-source course and DeFi agent on a self-custodial Starknet wallet: passkey (
 - A tx hash is not a result: always `waitForTransaction`
 - No workarounds around the SDK: if Vela needs something the SDK lacks, add it to the SDK
 - The user's own wallet (Bramble, Braavos, Ready) is identity, funding source and withdrawal destination, never the agent's wallet: only a Chipi wallet enforces the caps. It can also be a trusted wallet of the Chipi wallet (recovery wallet or co-owner, `lib/trusted-wallets.ts`); the agent's funds and caps stay in the Chipi wallet
+- Recovery ends with owner 0 rotated onto the new key (every passkey call signs as owner 0), and the Chipi wallet record is updated only after the chain shows owner 0 is that key (`app/api/recovery/route.ts`)
 - `course/` must match the code: when you change a file a lesson cites, update the lesson
 
 ## Commands
@@ -44,9 +45,11 @@ app/
   opengraph-image.tsx       # Share card
   onboarding/               # Passkey wallet → fund → hire
   dashboard/page.tsx        # Live agent status, portfolio, activity, stop
+  recover/page.tsx          # Lost passkey: sign in with the linked wallet, recover with the trusted wallet
   api/agents/route.ts       # GET state · POST create session · PATCH confirm/stop
   api/auth/[...all]/route.ts # Better Auth (passkeys, /token for Chipi, /jwks)
   api/tick/route.ts         # Scheduler entry (Bearer CRON_SECRET when set; claimDueAgent enforces TICK_INTERVAL_MINUTES; reports failed/overdue)
+  api/recovery/route.ts     # Recovery steps, each checked on-chain; the wallet record changes only once owner 0 is the new key
   api/trusted-wallets/route.ts # Trusted wallets: a proposal hash is accepted only if its receipt adds exactly that key and role; records are forgotten only when readPendingOp says the proposal can't add the owner anymore
 
 lib/
@@ -63,15 +66,17 @@ lib/
   auth-starknet.ts          # Sign in with Starknet (Better Auth plugin: /starknet/nonce, /starknet/verify)
   starknet-wallet.ts        # The user's own wallet in the browser (discovery, sign, send USDC); Bramble-strict
   trusted-wallets.ts        # Recovery wallet / co-owner: roles, the owner input, trustedStep()
+  recovery.ts               # Recovery to R, rotate owner 0 to K: recoveryStep(), findRotationOps()
   notices.ts                # sessionNotice() (ending/expired/out of calls/stopped) and recoveryAlert()
   use-hire-agent.ts         # Hire (and renew): POST, one passkey prompt, PATCH
   use-passkey-calls.ts      # Passkey-signed wallet calls, waited for
   use-agent-state.ts        # Client hook for GET /api/agents
 
 contracts/vault-router/      # Cairo router for Vesu (course module 13); snforge fork tests
-course/                      # The course: 00-setup … 18-trusted-wallets, each lesson cites real code
+course/                      # The course: 00-setup … 19-recover, each lesson cites real code
 
 components/
   onboarding/               # create-account, create-wallet, fund-wallet, configure-agent
+  recover/                  # recover-flow (the /recover steps)
   dashboard/                # agent-status, portfolio-card, activity-feed, stop-agent, linked-wallet, trusted-wallets, recovery-alert, session-notice
 ```

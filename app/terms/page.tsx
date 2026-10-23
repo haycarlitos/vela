@@ -23,7 +23,7 @@ const sections: { title: string; body: string[] }[] = [
     body: [
       "Your wallet is opened with a passkey on your device. Its key is encrypted in your browser; Vela's servers never see it and cannot move your funds with it.",
       `When you hire the agent, you sign a separate key for it. That key expires after ${sessionDays} days, can only call a short list of functions, and can only spend up to the caps you choose. Your wallet contract enforces those caps.`,
-      "If you lose access to your passkeys, Vela cannot recover your wallet for you.",
+      "If you lose access to your passkeys, Vela can't recover your wallet for you. You can, at /recover, if you added a recovery wallet or co-owner first; it takes about 8 days (1 with a co-owner).",
     ],
   },
   {

@@ -84,7 +84,7 @@ async function api(method: "GET" | "POST" | "PATCH" | "DELETE", body?: unknown) 
  * Vela wallet: a recovery wallet, or a co-owner. The passkey proposes it, the
  * wallet contract waits 48 hours, then the passkey activates it.
  */
-export function TrustedWallets({ wallet }: { wallet: ChipiWalletData | null }) {
+export function TrustedWallets({ wallet, linkedWallet }: { wallet: ChipiWalletData | null; linkedWallet: string | null }) {
   const walletAddress = wallet?.publicKey ?? null;
   const signCalls = usePasskeyCalls(wallet);
   const [records, setRecords] = useState<TrustedWalletRecord[] | null>(null);
@@ -264,6 +264,13 @@ export function TrustedWallets({ wallet }: { wallet: ChipiWalletData | null }) {
           key never leaves it.
         </p>
       </div>
+
+      {/* Recovering on a new device starts with signing in, and only a linked wallet signs in to this account. */}
+      {records && records.length > 0 && !linkedWallet && (
+        <p className="text-sm text-[var(--vela-gold)]">
+          To recover on a new device you&apos;ll sign in with a Starknet wallet linked to this account. Link one in Linked wallet.
+        </p>
+      )}
 
       {!records || !chain ? (
         <p className="text-sm text-[var(--text-muted)]">{error ?? "Reading your wallet's keys…"}</p>
