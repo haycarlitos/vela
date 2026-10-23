@@ -373,11 +373,20 @@ export async function startRecovery(
     "walletAddress" | "path" | "signerAddress" | "signerOwnerId" | "recoveryPubkey" | "recoveryKeyEnc" | "newPubkey" | "newKeyEnc" | "credentialId"
   >
 ): Promise<void> {
-  await query(`DELETE FROM recoveries WHERE user_id = $1`, [userId]);
+  // One statement: two devices starting at once can't race, and the old row is never half-gone.
   await query(
     `INSERT INTO recoveries (user_id, wallet_address, path, signer_address, signer_owner_id,
                              recovery_pubkey, recovery_key_enc, new_pubkey, new_key_enc, credential_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     ON CONFLICT (user_id) DO UPDATE SET
+       wallet_address = EXCLUDED.wallet_address, path = EXCLUDED.path,
+       signer_address = EXCLUDED.signer_address, signer_owner_id = EXCLUDED.signer_owner_id,
+       recovery_pubkey = EXCLUDED.recovery_pubkey, recovery_key_enc = EXCLUDED.recovery_key_enc,
+       new_pubkey = EXCLUDED.new_pubkey, new_key_enc = EXCLUDED.new_key_enc,
+       credential_id = EXCLUDED.credential_id,
+       initiate_tx = NULL, finalize_tx = NULL, recovered_owner_id = NULL, propose_tx = NULL,
+       rotate_op_id = NULL, remove_op_id = NULL, execute_tx = NULL, completed_at = NULL,
+       created_at = NOW(), updated_at = NOW()`,
     [userId, r.walletAddress, r.path, r.signerAddress, r.signerOwnerId, r.recoveryPubkey, r.recoveryKeyEnc, r.newPubkey, r.newKeyEnc, r.credentialId]
   );
 }

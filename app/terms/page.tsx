@@ -61,7 +61,7 @@ const sections: { title: string; body: string[] }[] = [
   {
     title: "Your data",
     body: [
-      "Vela stores an anonymous account id, your wallet address, your agent's settings and its decisions. It does not ask for your name or email. Transactions are public on Starknet.",
+      "Vela stores an anonymous account id, your wallet address, your agent's settings and its decisions. If you add trusted wallets, it stores their addresses and public keys; during a recovery, it also stores your new keys, encrypted so that only your new passkey opens them, and deletes them when the recovery completes. It does not ask for your name or email. Transactions are public on Starknet.",
     ],
   },
 ];
