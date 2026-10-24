@@ -42,6 +42,7 @@ Either way, every exercise runs on mainnet with cents. Nothing here is a simulat
 | **F** | **Meet users where they are** | | |
 | 17 | [Bring your own wallet](./17-bring-your-wallet.md) | Sign in with Starknet, counterfactual accounts, funding and withdrawals | `lib/auth-starknet.ts`, `lib/starknet-wallet.ts` |
 | 18 | [Trusted wallets](./18-trusted-wallets.md) | Multiple owners, roles, governance timelocks | `lib/trusted-wallets.ts`, `trusted-wallets.tsx`, `recovery-alert.tsx` |
+| 19 | [Recover a lost passkey](./19-recover.md) | Recovery adds an owner; rotating owner 0; verify before storing | `lib/recovery.ts`, `api/recovery`, `recover-flow.tsx` |
 
 ## How each module works
 

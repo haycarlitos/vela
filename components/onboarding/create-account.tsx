@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { authClient } from "@/lib/auth-client";
@@ -88,6 +89,9 @@ export function CreateAccount() {
         >
           Continue with Bramble, Braavos or Ready
         </button>
+        <Link href="/recover" className="block mt-4 text-xs text-[var(--text-muted)] hover:underline">
+          Lost your passkey? Recover your wallet
+        </Link>
       </div>
 
       {error && <p className="mt-3 text-sm text-[var(--vela-red)]">{error}</p>}

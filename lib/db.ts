@@ -1,6 +1,7 @@
 import "server-only";
 import pg from "pg";
 import type { Strategy } from "./strategies";
+import type { RecoveryRecord } from "./recovery";
 import type { TrustedRole, TrustedWalletRecord } from "./trusted-wallets";
 
 // Any Postgres (Neon, Railway, Supabase, Vercel Postgres) via DATABASE_URL.
@@ -69,6 +70,31 @@ function ensureSchema(): Promise<void> {
         propose_tx_hash TEXT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         PRIMARY KEY (user_id, signer_address)
+      );
+
+      -- A recovery in progress. The keys are ciphertext only: the new passkey's
+      -- PRF output decrypts them, and the server never sees it.
+      CREATE TABLE IF NOT EXISTS recoveries (
+        user_id TEXT PRIMARY KEY,
+        wallet_address TEXT NOT NULL,
+        path TEXT NOT NULL,
+        signer_address TEXT NOT NULL,
+        signer_owner_id INTEGER NOT NULL,
+        recovery_pubkey TEXT,
+        recovery_key_enc TEXT,
+        new_pubkey TEXT NOT NULL,
+        new_key_enc TEXT,
+        credential_id TEXT NOT NULL,
+        initiate_tx TEXT,
+        finalize_tx TEXT,
+        recovered_owner_id INTEGER,
+        propose_tx TEXT,
+        rotate_op_id TEXT,
+        remove_op_id TEXT,
+        execute_tx TEXT,
+        completed_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `);
   })().catch((err) => {
@@ -290,4 +316,114 @@ export async function setTrustedWalletProposal(userId: string, signerAddress: st
 
 export async function deleteTrustedWallet(userId: string, signerAddress: string): Promise<void> {
   await query(`DELETE FROM trusted_wallets WHERE user_id = $1 AND signer_address = $2`, [userId, signerAddress]);
+}
+
+// ---------- recoveries ----------
+
+interface RecoveryRow {
+  wallet_address: string;
+  path: RecoveryRecord["path"];
+  signer_address: string;
+  signer_owner_id: number;
+  recovery_pubkey: string | null;
+  recovery_key_enc: string | null;
+  new_pubkey: string;
+  new_key_enc: string | null;
+  credential_id: string;
+  initiate_tx: string | null;
+  finalize_tx: string | null;
+  recovered_owner_id: number | null;
+  propose_tx: string | null;
+  rotate_op_id: string | null;
+  remove_op_id: string | null;
+  execute_tx: string | null;
+  completed_at: Date | null;
+}
+
+export async function getRecovery(userId: string): Promise<RecoveryRecord | null> {
+  const { rows } = await query<RecoveryRow>(`SELECT * FROM recoveries WHERE user_id = $1`, [userId]);
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    walletAddress: row.wallet_address,
+    path: row.path,
+    signerAddress: row.signer_address,
+    signerOwnerId: row.signer_owner_id,
+    recoveryPubkey: row.recovery_pubkey,
+    recoveryKeyEnc: row.recovery_key_enc,
+    newPubkey: row.new_pubkey,
+    newKeyEnc: row.new_key_enc,
+    credentialId: row.credential_id,
+    initiateTx: row.initiate_tx,
+    finalizeTx: row.finalize_tx,
+    recoveredOwnerId: row.recovered_owner_id,
+    proposeTx: row.propose_tx,
+    rotateOpId: row.rotate_op_id,
+    removeOpId: row.remove_op_id,
+    executeTx: row.execute_tx,
+    completedAt: row.completed_at ? row.completed_at.toISOString() : null,
+  };
+}
+
+/** Starts (or starts over) the user's recovery: one per user. */
+export async function startRecovery(
+  userId: string,
+  r: Pick<
+    RecoveryRecord,
+    "walletAddress" | "path" | "signerAddress" | "signerOwnerId" | "recoveryPubkey" | "recoveryKeyEnc" | "newPubkey" | "newKeyEnc" | "credentialId"
+  >
+): Promise<void> {
+  // One statement: two devices starting at once can't race, and the old row is never half-gone.
+  await query(
+    `INSERT INTO recoveries (user_id, wallet_address, path, signer_address, signer_owner_id,
+                             recovery_pubkey, recovery_key_enc, new_pubkey, new_key_enc, credential_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     ON CONFLICT (user_id) DO UPDATE SET
+       wallet_address = EXCLUDED.wallet_address, path = EXCLUDED.path,
+       signer_address = EXCLUDED.signer_address, signer_owner_id = EXCLUDED.signer_owner_id,
+       recovery_pubkey = EXCLUDED.recovery_pubkey, recovery_key_enc = EXCLUDED.recovery_key_enc,
+       new_pubkey = EXCLUDED.new_pubkey, new_key_enc = EXCLUDED.new_key_enc,
+       credential_id = EXCLUDED.credential_id,
+       initiate_tx = NULL, finalize_tx = NULL, recovered_owner_id = NULL, propose_tx = NULL,
+       rotate_op_id = NULL, remove_op_id = NULL, execute_tx = NULL, completed_at = NULL,
+       created_at = NOW(), updated_at = NOW()`,
+    [userId, r.walletAddress, r.path, r.signerAddress, r.signerOwnerId, r.recoveryPubkey, r.recoveryKeyEnc, r.newPubkey, r.newKeyEnc, r.credentialId]
+  );
+}
+
+const RECOVERY_PROGRESS = {
+  initiateTx: "initiate_tx",
+  finalizeTx: "finalize_tx",
+  recoveredOwnerId: "recovered_owner_id",
+  proposeTx: "propose_tx",
+  rotateOpId: "rotate_op_id",
+  removeOpId: "remove_op_id",
+  executeTx: "execute_tx",
+} as const;
+
+/** Records progress the chain already confirmed. */
+export async function updateRecovery(
+  userId: string,
+  progress: Partial<Pick<RecoveryRecord, keyof typeof RECOVERY_PROGRESS>>
+): Promise<void> {
+  const entries = Object.entries(progress).filter(([, v]) => v !== undefined) as Array<[keyof typeof RECOVERY_PROGRESS, unknown]>;
+  if (entries.length === 0) return;
+  const sets = entries.map(([key], i) => `${RECOVERY_PROGRESS[key]} = $${i + 2}`);
+  await query(`UPDATE recoveries SET ${sets.join(", ")}, updated_at = NOW() WHERE user_id = $1`, [
+    userId,
+    ...entries.map(([, v]) => v),
+  ]);
+}
+
+/** The new key is on the wallet record: drop the ciphertexts, keep the trail. */
+export async function completeRecovery(userId: string): Promise<void> {
+  await query(
+    `UPDATE recoveries SET completed_at = NOW(), recovery_key_enc = NULL, new_key_enc = NULL, updated_at = NOW()
+     WHERE user_id = $1`,
+    [userId]
+  );
+}
+
+export async function deleteRecovery(userId: string): Promise<void> {
+  await query(`DELETE FROM recoveries WHERE user_id = $1`, [userId]);
 }

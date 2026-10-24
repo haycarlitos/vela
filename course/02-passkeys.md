@@ -25,7 +25,7 @@ create wallet ──▶ wallet passkey ──PRF──▶ encryption key ──�
 
 ## Exercise
 
-1. Create an account, sign out, and sign in again with the passkey on another device that syncs it.
+1. Create an account, sign out, and sign in again with the passkey on another device that syncs it. (Lost both passkeys? Module 19 recovers the wallet with a trusted wallet.)
 2. Decode a token: in the browser console run `await (await fetch("/api/auth/token")).json()` and paste the token into [jwt.io](https://jwt.io). Find `sub` (your user id, the one Chipi uses) and `exp`.
 
 ## Test
