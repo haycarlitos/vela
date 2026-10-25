@@ -49,7 +49,8 @@ const sections: { title: string; body: string[] }[] = [
   {
     title: "Fees",
     body: [
-      "Vela charges no fee. Network gas is sponsored. Swaps pay the usual protocol and slippage costs, and the agent may pay a small amount in USDC for each AI decision when the deployment enables it.",
+      "Vela charges no fee. Network gas on Starknet is sponsored. Swaps pay the usual protocol and slippage costs, and the agent may pay a small amount in USDC for each AI decision when the deployment enables it.",
+      "If you bring USDC from Base, the transfer runs on Circle's Cross-Chain Transfer Protocol: you pay Base's network fee and, if you choose the fast option, Circle's fee, both shown before you sign. Chipi pays the Starknet side. Circle's attestation can take minutes; your USDC is in transit during that time, not lost.",
     ],
   },
   {
@@ -73,7 +74,7 @@ export default function TermsPage() {
         ← Vela
       </Link>
       <h1 className="text-3xl font-bold mt-6 mb-2">Terms</h1>
-      <p className="text-sm text-[var(--text-muted)] mb-10">Beta draft · last updated October 7, 2026</p>
+      <p className="text-sm text-[var(--text-muted)] mb-10">Beta draft · last updated October 25, 2026</p>
 
       <div className="space-y-8">
         {sections.map((section) => (

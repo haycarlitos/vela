@@ -12,6 +12,16 @@ export type TokenSymbol = keyof typeof TOKENS;
 export const TOKEN_DECIMALS: Record<TokenSymbol, number> = { USDC: 6, ETH: 18, STRK: 18 };
 
 /**
+ * The one EVM chain Vela brings USDC from (Circle CCTP V2, course module 20).
+ * Base is the chain Chipi has run real transfers on (`verified: true` in the
+ * SDK's CCTP_EVM_CHAINS); the others are wired in the SDK but not offered here.
+ */
+export const EVM_DEPOSIT_CHAIN_KEY = "base";
+
+/** Reads the user's USDC balance on Base before they deposit. Public endpoint by default. */
+export const BASE_RPC_URL = process.env.NEXT_PUBLIC_BASE_RPC_URL || "https://mainnet.base.org";
+
+/**
  * Vesu Re7 USDC Core: an ERC-4626 vault whose asset() is native USDC
  * (verified on mainnet by walletv2, lib/chipi/vesu.ts). The SDK's bundled
  * VESU_USDC_MAINNET wraps bridged USDC.e, so it is deliberately not used.

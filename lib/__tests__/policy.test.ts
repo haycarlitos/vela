@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { CAPPED_TOKENS, decide, spendingPolicies, usdToBaseUnits, type Portfolio } from "../policy";
-import { TOKENS, VESU_USDC_VAULT, describeTickInterval, isFunded } from "../config";
+import { TOKENS, VESU_USDC_VAULT, describeTickInterval, isFunded, sessionEntrypoints } from "../config";
 
 const portfolio: Portfolio = {
   USDC: { balance: 40, usd: 40 },
@@ -138,6 +138,21 @@ describe("spendingPolicies", () => {
 
   it("refuses a max trade below the minimum", () => {
     expect(() => spendingPolicies(0, prices)).toThrow();
+  });
+});
+
+describe("sessionEntrypoints", () => {
+  it("never lets the agent send USDC off Starknet or mint a deposit", () => {
+    // Module 20 brings USDC in through Circle's TokenMessengerMinterV2. Only
+    // the user's own key may ever call it: a session that could burn would
+    // move the whole wallet to any chain and address, past every cap.
+    for (const cctp of ["deposit_for_burn", "deposit_for_burn_with_hook", "receive_message"]) {
+      expect(sessionEntrypoints()).not.toContain(cctp);
+    }
+    // `approve` is whitelisted (swaps and the vault router need it), so the
+    // USDC cap must also meter it: an approval to the messenger is as bounded
+    // as a trade.
+    expect(sessionEntrypoints()).toContain("approve");
   });
 });
 

@@ -7,14 +7,14 @@
 - **The model advises, code decides.** The agent thinks with Chipi's AI API (`sdk.ai.think`, live market signals and yields), and a deterministic policy (`lib/policy.ts`) decides what actually reaches the chain.
 - **No gas.** Every transaction is sponsored by Chipi's paymaster.
 
-**New here? Start with the [course](./course/README.md):** 19 short modules, from "what is a wallet" to writing a Cairo contract, each with a mainnet exercise and a test.
+**New here? Start with the [course](./course/README.md):** 20 short modules, from "what is a wallet" to writing a Cairo contract, each with a mainnet exercise and a test.
 
 > SHHH V8.4 is pending its external audit. By default the agent manages wallets up to $100 (`MAX_DEPOSIT_USD`). The agent can lose money within its limits. See [SECURITY.md](./SECURITY.md).
 
 ## How Vela works
 
 1. **You open a wallet with a passkey** (face, fingerprint or device PIN), or sign in with the Starknet wallet you already use (Bramble, Braavos, Ready). The wallet is a smart contract on Starknet; its key is encrypted with your passkey, so only you can use it.
-2. **You add a few dollars of USDC.**
+2. **You add a few dollars of USDC**, from a Starknet wallet or straight from USDC you hold on Base (Circle CCTP; you see both speeds and prices before signing).
 3. **You hire the agent with one approval.** That approval gives the agent its own key, a *session key*, and writes its limits into your wallet contract: which functions it may call, how much USDC, ETH and STRK per trade and per day, and when it expires (7 days).
 4. **The agent runs on a schedule.** Each time, it reads your balances and market data, asks an AI model for one decision, and checks that decision against fixed rules in code (`lib/policy.ts`). Only a decision that passes becomes a transaction: a swap on AVNU, or USDC into a Vesu vault. If the model is wrong, the rules hold; if the rules were wrong, the wallet contract still refuses anything past your caps.
 5. **You watch, stop and withdraw.** The dashboard shows every decision with its reason and transaction. One approval revokes the agent's key, and withdrawals go back to your own wallet. You never pay gas.
