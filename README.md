@@ -5,7 +5,7 @@
 - **Your wallet, your key.** A SHHH smart wallet secured by your passkey (WebAuthn PRF). Neither Vela nor Chipi can decrypt it.
 - **Delegate once.** One passkey prompt hires the agent, one stops it. In between, the agent signs with a session key the wallet contract limits by itself: which functions, how many calls, for how long, and how much USDC, ETH and STRK per trade and per day.
 - **The model advises, code decides.** The agent thinks with Chipi's AI API (`sdk.ai.think`, live market signals and yields), and a deterministic policy (`lib/policy.ts`) decides what actually reaches the chain.
-- **No gas.** Every transaction is sponsored by Chipi's paymaster.
+- **No gas on Starknet.** Every Starknet transaction is sponsored by Chipi's paymaster. A deposit from Base pays Base's own network fee (cents).
 
 **New here? Start with the [course](./course/README.md):** 20 short modules, from "what is a wallet" to writing a Cairo contract, each with a mainnet exercise and a test.
 

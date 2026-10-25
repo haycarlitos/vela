@@ -5,6 +5,7 @@ import {
   describeStartedAt,
   loadPendingDeposit,
   parsePendingDeposit,
+  pendingDepositHome,
   pendingDepositKey,
   readPendingDepositRaw,
   savePendingDeposit,
@@ -46,11 +47,39 @@ describe("pending deposit", () => {
     expect(loadPendingDeposit(WALLET, store)).toBeNull();
   });
 
-  it("does nothing without storage (server render)", () => {
+  it("reads nothing without storage (server render)", () => {
     expect(loadPendingDeposit(WALLET, null)).toBeNull();
     expect(readPendingDepositRaw(WALLET, null)).toBeNull();
+    expect(pendingDepositHome(WALLET, null)).toBeNull();
     expect(parsePendingDeposit(null)).toBeNull();
-    expect(() => savePendingDeposit(WALLET, deposit, null)).not.toThrow();
+  });
+
+  it("keeps the burn hash in memory when storage is missing or throws, and says so", () => {
+    const throwing = {
+      getItem: () => {
+        throw new Error("SecurityError");
+      },
+      setItem: () => {
+        throw new Error("QuotaExceededError");
+      },
+      removeItem: () => {
+        throw new Error("SecurityError");
+      },
+    };
+    expect(savePendingDeposit(WALLET, deposit, throwing)).toBe("memory");
+    expect(loadPendingDeposit(WALLET, throwing)).toEqual(deposit);
+    expect(pendingDepositHome(WALLET, throwing)).toBe("memory");
+    clearPendingDeposit(WALLET, throwing);
+    expect(loadPendingDeposit(WALLET, throwing)).toBeNull();
+
+    expect(savePendingDeposit(WALLET, deposit, null)).toBe("memory");
+    expect(loadPendingDeposit(WALLET, null)).toEqual(deposit);
+    // Once storage works again, the record moves there and memory is dropped.
+    const store = memoryStore();
+    expect(savePendingDeposit(WALLET, deposit, store)).toBe("storage");
+    expect(pendingDepositHome(WALLET, store)).toBe("storage");
+    expect(loadPendingDeposit(WALLET, null)).toBeNull();
+    clearPendingDeposit(WALLET, store);
   });
 
   it("hands useSyncExternalStore the stored string, so an unchanged record is the same snapshot", () => {

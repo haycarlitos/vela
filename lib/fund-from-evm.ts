@@ -28,6 +28,14 @@ function defaultStore(): Store | null {
 /** Fired on `window` after a save or clear, so a component reading the record re-renders. */
 export const PENDING_DEPOSIT_EVENT = "vela:pending-deposit";
 
+/**
+ * Where a record lives: `storage` survives a reload; `memory` is this tab only,
+ * used when localStorage is missing or throws (private mode, quota, policy).
+ * The burn hash is never dropped: a deposit in flight must stay visible.
+ */
+export type PendingDepositHome = "storage" | "memory";
+const memory = new Map<string, string>();
+
 function announce(): void {
   if (typeof window !== "undefined") window.dispatchEvent(new Event(PENDING_DEPOSIT_EVENT));
 }
@@ -37,14 +45,32 @@ export function pendingDepositKey(walletAddress: string): string {
   return `vela:pending-deposit:${walletAddress.toLowerCase()}`;
 }
 
-export function savePendingDeposit(walletAddress: string, deposit: PendingDeposit, store = defaultStore()): void {
-  store?.setItem(pendingDepositKey(walletAddress), JSON.stringify(deposit));
+/** Remembers the deposit; says where it ended up. */
+export function savePendingDeposit(
+  walletAddress: string,
+  deposit: PendingDeposit,
+  store = defaultStore()
+): PendingDepositHome {
+  const key = pendingDepositKey(walletAddress);
+  const raw = JSON.stringify(deposit);
+  let home: PendingDepositHome = "memory";
+  try {
+    if (store) {
+      store.setItem(key, raw);
+      home = "storage";
+    }
+  } catch {
+    // Quota, private mode, a blocked origin: keep it in memory instead.
+  }
+  if (home === "memory") memory.set(key, raw);
+  else memory.delete(key);
   announce();
+  return home;
 }
 
 /** The remembered deposit, or null when there is none or the record is unreadable. */
 export function loadPendingDeposit(walletAddress: string, store = defaultStore()): PendingDeposit | null {
-  return parsePendingDeposit(store?.getItem(pendingDepositKey(walletAddress)) ?? null);
+  return parsePendingDeposit(readPendingDepositRaw(walletAddress, store));
 }
 
 /** The stored record, checked field by field; null for anything that isn't a burn hash with its context. */
@@ -68,13 +94,35 @@ export function parsePendingDeposit(raw: string | null): PendingDeposit | null {
 }
 
 export function clearPendingDeposit(walletAddress: string, store = defaultStore()): void {
-  store?.removeItem(pendingDepositKey(walletAddress));
+  const key = pendingDepositKey(walletAddress);
+  try {
+    store?.removeItem(key);
+  } catch {
+    // Nothing to do: the memory copy below is what the page reads then.
+  }
+  memory.delete(key);
   announce();
+}
+
+function readStored(key: string, store: Store | null): string | null {
+  try {
+    return store?.getItem(key) ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /** The raw record for `useSyncExternalStore`: the string itself, so an unchanged record is the same snapshot. */
 export function readPendingDepositRaw(walletAddress: string, store = defaultStore()): string | null {
-  return store?.getItem(pendingDepositKey(walletAddress)) ?? null;
+  const key = pendingDepositKey(walletAddress);
+  return readStored(key, store) ?? memory.get(key) ?? null;
+}
+
+/** Where the current record lives, or null without one. `memory` means a reload loses it. */
+export function pendingDepositHome(walletAddress: string, store = defaultStore()): PendingDepositHome | null {
+  const key = pendingDepositKey(walletAddress);
+  if (readStored(key, store)) return "storage";
+  return memory.has(key) ? "memory" : null;
 }
 
 /** Re-render on a save or clear from this tab, or a change from another tab. */

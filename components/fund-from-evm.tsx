@@ -18,6 +18,7 @@ import {
   depositStepLabel,
   describeStartedAt,
   parsePendingDeposit,
+  pendingDepositHome,
   readPendingDepositRaw,
   savePendingDeposit,
   subscribePendingDeposit,
@@ -81,6 +82,12 @@ export function FundFromEvm({ to, roomUsd, onDeposited }: Props) {
     () => null
   );
   const pending = useMemo(() => parsePendingDeposit(pendingRaw), [pendingRaw]);
+  // "memory" means this browser refused to store it: the hash lives in this tab only.
+  const pendingHome = useSyncExternalStore(
+    subscribePendingDeposit,
+    () => pendingDepositHome(to),
+    () => null
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -113,8 +120,10 @@ export function FundFromEvm({ to, roomUsd, onDeposited }: Props) {
     try {
       const accounts = (await wallet.provider.request({ method: "eth_requestAccounts" })) as `0x${string}`[];
       if (!accounts[0]) throw new Error(`${wallet.info.name} returned no account.`);
+      // Balance first: if Base's RPC is down, the wallet list stays and the user can retry.
+      const usdc = await baseUsdcBalance(accounts[0]);
       setConnected({ wallet, account: accounts[0] });
-      setBalance(await baseUsdcBalance(accounts[0]));
+      setBalance(usdc);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -193,6 +202,12 @@ export function FundFromEvm({ to, roomUsd, onDeposited }: Props) {
         Deposit of <span className="font-mono">{pending.amountUsdc} USDC</span> from Base,{" "}
         {describeStartedAt(pending.startedAt)}.
       </p>
+      {pendingHome === "memory" && (
+        <p className="text-xs text-[var(--vela-gold)]">
+          This browser wouldn&apos;t save the record, so it lives in this tab only. Keep the tab open, or copy the Base
+          transaction below.
+        </p>
+      )}
       <p className="text-xs text-[var(--text-muted)]">
         {followed.data?.status === "FAILED"
           ? "Chipi could not mint it yet. Your USDC is safe: keep the Base transaction below and contact support."
