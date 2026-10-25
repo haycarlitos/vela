@@ -122,8 +122,16 @@ export function FundFromEvm({ to, roomUsd, onDeposited }: Props) {
     }
   };
 
+  // One remembered burn per wallet: a second deposit would replace the hash
+  // this page is following. Wait for it, or stop following it, first.
+  const inFlight = () => {
+    if (!readPendingDepositRaw(to)) return false;
+    setError("A deposit from Base is already in flight. Wait for it to arrive before starting another.");
+    return true;
+  };
+
   const getQuotes = async () => {
-    if (balance === null) return;
+    if (balance === null || inFlight()) return;
     const check = checkDeposit(amount, { walletUsdc: balance, roomUsd });
     if (!check.ok) return setError(check.message);
     setBusy(true);
@@ -138,7 +146,7 @@ export function FundFromEvm({ to, roomUsd, onDeposited }: Props) {
   };
 
   const deposit = async (finality: CctpFinality) => {
-    if (!connected || !quotes) return;
+    if (!connected || !quotes || inFlight()) return;
     const q = quotes[finality];
     setError(null);
     setStatus(null);
