@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { MIN_FUNDING_USD } from "@/lib/config";
 import { SendFromWallet } from "@/components/send-from-wallet";
+import { FundFromEvm } from "@/components/fund-from-evm";
 
 interface FundWalletProps {
   walletAddress: string;
@@ -36,6 +37,11 @@ export function FundWallet({ walletAddress, usdc, depositCapUsd, onRefresh }: Fu
 
       <div className="mb-6">
         <SendFromWallet to={walletAddress} roomUsd={Math.max(0, depositCapUsd - usdc)} onSent={onRefresh} />
+      </div>
+
+      <p className="text-xs text-[var(--text-muted)] mb-2">Or bring USDC you hold on Base (Circle CCTP, course module 20)</p>
+      <div className="mb-6">
+        <FundFromEvm to={walletAddress} roomUsd={Math.max(0, depositCapUsd - usdc)} onDeposited={onRefresh} />
       </div>
 
       <p className="text-xs text-[var(--text-muted)] mb-2">Or send USDC on Starknet to this address</p>

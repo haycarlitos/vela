@@ -25,6 +25,7 @@ Open-source course and DeFi agent on a self-custodial Starknet wallet: passkey (
 - No workarounds around the SDK: if Vela needs something the SDK lacks, add it to the SDK
 - The user's own wallet (Bramble, Braavos, Ready) is identity, funding source and withdrawal destination, never the agent's wallet: only a Chipi wallet enforces the caps. It can also be a trusted wallet of the Chipi wallet (recovery wallet or co-owner, `lib/trusted-wallets.ts`); the agent's funds and caps stay in the Chipi wallet
 - Recovery ends with owner 0 rotated onto the new key (every passkey call signs as owner 0), and the Chipi wallet record is updated only after the chain shows owner 0 is that key (`app/api/recovery/route.ts`)
+- Deposits from other chains (Circle CCTP, `components/fund-from-evm.tsx`) mint to the Chipi wallet only: the recipient is never typed, and the SDK's `assertMintRecipient` checks the encoded value before the user signs. Base only (`EVM_DEPOSIT_CHAIN_KEY`); the agent's whitelist never includes `deposit_for_burn`. No cross-chain withdrawals: withdrawals go to the linked wallet
 - `course/` must match the code: when you change a file a lesson cites, update the lesson
 
 ## Commands
@@ -71,12 +72,15 @@ lib/
   use-hire-agent.ts         # Hire (and renew): POST, one passkey prompt, PATCH
   use-passkey-calls.ts      # Passkey-signed wallet calls, waited for
   use-agent-state.ts        # Client hook for GET /api/agents
+  fund-from-evm.ts          # Bring USDC from Base: pending-burn storage, step labels (course module 20)
 
 contracts/vault-router/      # Cairo router for Vesu (course module 13); snforge fork tests
-course/                      # The course: 00-setup … 19-recover, each lesson cites real code
+course/                      # The course: 00-setup … 20-fund-from-any-chain, each lesson cites real code
 
 components/
   onboarding/               # create-account, create-wallet, fund-wallet, configure-agent
+  send-from-wallet.tsx      # Fund from the user's Starknet wallet (module 17)
+  fund-from-evm.tsx         # Fund from USDC on Base through Circle CCTP, useCrossChainDeposit (module 20)
   recover/                  # recover-flow (the /recover steps)
   dashboard/                # agent-status, portfolio-card, activity-feed, stop-agent, linked-wallet, trusted-wallets, recovery-alert, session-notice
 ```
