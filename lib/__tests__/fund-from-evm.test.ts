@@ -7,6 +7,7 @@ import {
   parsePendingDeposit,
   pendingDepositHome,
   pendingDepositKey,
+  pendingDepositStuck,
   readPendingDepositRaw,
   savePendingDeposit,
   type PendingDeposit,
@@ -82,6 +83,42 @@ describe("pending deposit", () => {
     clearPendingDeposit(WALLET, store);
   });
 
+  it("never lets an unreadable record block the next deposit", () => {
+    const store = memoryStore();
+    store.setItem(pendingDepositKey(WALLET), "not json");
+    expect(readPendingDepositRaw(WALLET, store)).toBeNull();
+    expect(pendingDepositHome(WALLET, store)).toBeNull();
+    store.setItem(pendingDepositKey(WALLET), JSON.stringify({ burnTxHash: BURN }));
+    expect(readPendingDepositRaw(WALLET, store)).toBeNull();
+    // A new deposit replaces it.
+    expect(savePendingDeposit(WALLET, deposit, store)).toBe("storage");
+    expect(loadPendingDeposit(WALLET, store)).toEqual(deposit);
+    clearPendingDeposit(WALLET, store);
+  });
+
+  it("reads a record as cleared in this tab when storage won't remove it, and says so", () => {
+    const store = memoryStore();
+    const stubborn = {
+      ...store,
+      removeItem: () => {
+        throw new Error("SecurityError");
+      },
+    };
+    savePendingDeposit(WALLET, deposit, stubborn);
+    expect(clearPendingDeposit(WALLET, stubborn)).toBe(false);
+    expect(store.map.has(pendingDepositKey(WALLET))).toBe(true); // still stored: a reload will show it
+    expect(readPendingDepositRaw(WALLET, stubborn)).toBeNull(); // but this tab moves on
+    expect(pendingDepositHome(WALLET, stubborn)).toBeNull();
+    expect(pendingDepositStuck(WALLET, stubborn)).toBe(true);
+    // The next deposit is remembered normally, and a clear that works returns true.
+    const next = { ...deposit, burnTxHash: "0x" + "cd".repeat(32) };
+    savePendingDeposit(WALLET, next, stubborn);
+    expect(loadPendingDeposit(WALLET, stubborn)).toEqual(next);
+    expect(pendingDepositStuck(WALLET, stubborn)).toBe(false);
+    expect(clearPendingDeposit(WALLET, store)).toBe(true);
+    expect(loadPendingDeposit(WALLET, store)).toBeNull();
+  });
+
   it("hands useSyncExternalStore the stored string, so an unchanged record is the same snapshot", () => {
     const store = memoryStore();
     savePendingDeposit(WALLET, deposit, store);
@@ -96,6 +133,12 @@ describe("depositStepLabel", () => {
     expect(depositStepLabel("attesting", "15 to 20 minutes")).toMatch(/15 to 20 minutes.*close this page/);
     expect(depositStepLabel("minting", "a minute or two")).toContain("a minute or two");
     expect(depositStepLabel("attesting", null)).toContain("a while");
+  });
+
+  it("asks the user to keep the tab open when the burn hash lives only in memory", () => {
+    expect(depositStepLabel("attesting", "15 to 20 minutes", "memory")).toMatch(/Keep this tab open/);
+    expect(depositStepLabel("attesting", "15 to 20 minutes", "memory")).not.toMatch(/close this page/);
+    expect(depositStepLabel("attesting", "15 to 20 minutes", "storage")).toMatch(/close this page/);
   });
 
   it("names the wallet prompts", () => {

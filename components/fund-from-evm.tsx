@@ -19,6 +19,7 @@ import {
   describeStartedAt,
   parsePendingDeposit,
   pendingDepositHome,
+  pendingDepositStuck,
   readPendingDepositRaw,
   savePendingDeposit,
   subscribePendingDeposit,
@@ -109,6 +110,12 @@ export function FundFromEvm({ to, roomUsd, onDeposited }: Props) {
     clearPendingDeposit(to);
     onDeposited();
   }, [to, onDeposited]);
+  // Storage refused to forget a cleared record: this tab ignores it, a reload shows it again.
+  const stuck = useSyncExternalStore(
+    subscribePendingDeposit,
+    () => pendingDepositStuck(to),
+    () => false
+  );
   const minted = pending !== null && followed.data?.status === "MINTED";
   useEffect(() => {
     if (minted) finish();
@@ -172,7 +179,7 @@ export function FundFromEvm({ to, roomUsd, onDeposited }: Props) {
           if (burnTxHash && !readPendingDepositRaw(to)) {
             savePendingDeposit(to, { burnTxHash, sourceDomain: BASE.domain, amountUsdc: q.amountUsdc, startedAt: Date.now() });
           }
-          setStatus(depositStepLabel(step, eta ? formatCctpEta(eta) : null));
+          setStatus(depositStepLabel(step, eta ? formatCctpEta(eta) : null, pendingDepositHome(to)));
         },
       });
       setQuotes(null);
@@ -196,6 +203,13 @@ export function FundFromEvm({ to, roomUsd, onDeposited }: Props) {
     }
   };
 
+  const stuckNotice = stuck && !pending && (
+    <p className="text-xs text-[var(--text-muted)]">
+      This browser wouldn&apos;t forget the last deposit&apos;s record. It&apos;s ignored in this tab; it may show again after
+      a reload.
+    </p>
+  );
+
   const pendingCard = pending && (
     <div className="glass p-4 space-y-1 text-left">
       <p className="text-sm">
@@ -213,7 +227,9 @@ export function FundFromEvm({ to, roomUsd, onDeposited }: Props) {
           ? "Chipi could not mint it yet. Your USDC is safe: keep the Base transaction below and contact support."
           : followed.data?.status === "UNREGISTERED"
             ? "Chipi has no record of this burn. Keep the Base transaction below; a mint can be delivered at any time."
-            : "Circle attests it, then Chipi mints it on Starknet. You can close this page."}
+            : pendingHome === "memory"
+              ? "Circle attests it, then Chipi mints it on Starknet. Keep this tab open until it arrives."
+              : "Circle attests it, then Chipi mints it on Starknet. You can close this page."}
       </p>
       <a
         href={`${BASE.explorerTx}${pending.burnTxHash}`}
@@ -235,6 +251,7 @@ export function FundFromEvm({ to, roomUsd, onDeposited }: Props) {
     return (
       <div className="space-y-2">
         {pendingCard}
+        {stuckNotice}
         {wallets.length === 0 && (
           <p className="text-xs text-[var(--text-muted)]">No EVM wallet found in this browser (MetaMask, Rabby, Coinbase Wallet…).</p>
         )}
@@ -262,6 +279,7 @@ export function FundFromEvm({ to, roomUsd, onDeposited }: Props) {
   return (
     <div className="space-y-3 text-left">
       {pendingCard}
+      {stuckNotice}
       <p className="text-sm text-[var(--text-secondary)]">
         {connected.wallet.info.name} has <span className="font-mono">{balance === null ? "…" : formatUsdc(balance)} USDC</span> on
         Base. It pays Base&apos;s network fee (cents).

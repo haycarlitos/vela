@@ -35,6 +35,13 @@ export const PENDING_DEPOSIT_EVENT = "vela:pending-deposit";
  */
 export type PendingDepositHome = "storage" | "memory";
 const memory = new Map<string, string>();
+/**
+ * Records this tab cleared that storage refused to remove (`removeItem`
+ * threw): key → the raw value still stored. Such a record is read as none, so
+ * a finished or abandoned deposit never blocks the next one. A later save
+ * replaces it and lifts the mark.
+ */
+const clearedInTab = new Map<string, string>();
 
 function announce(): void {
   if (typeof window !== "undefined") window.dispatchEvent(new Event(PENDING_DEPOSIT_EVENT));
@@ -64,6 +71,7 @@ export function savePendingDeposit(
   }
   if (home === "memory") memory.set(key, raw);
   else memory.delete(key);
+  clearedInTab.delete(key);
   announce();
   return home;
 }
@@ -93,15 +101,23 @@ export function parsePendingDeposit(raw: string | null): PendingDeposit | null {
   }
 }
 
-export function clearPendingDeposit(walletAddress: string, store = defaultStore()): void {
+/**
+ * Forgets the deposit. Returns false when storage still holds the record
+ * (`removeItem` threw): this tab then reads it as none, but a reload or
+ * another tab will see it again, so the page should say so.
+ */
+export function clearPendingDeposit(walletAddress: string, store = defaultStore()): boolean {
   const key = pendingDepositKey(walletAddress);
   try {
     store?.removeItem(key);
   } catch {
-    // Nothing to do: the memory copy below is what the page reads then.
+    // Handled below: whatever is still stored is marked cleared for this tab.
   }
   memory.delete(key);
+  const stuck = readStored(key, store);
+  if (stuck !== null) clearedInTab.set(key, stuck);
   announce();
+  return stuck === null;
 }
 
 function readStored(key: string, store: Store | null): string | null {
@@ -112,16 +128,35 @@ function readStored(key: string, store: Store | null): string | null {
   }
 }
 
+/**
+ * The stored record this page should act on: null when there is none, when
+ * it isn't a deposit (malformed, another schema: it must never block a new
+ * deposit), or when this tab cleared it and storage wouldn't let go.
+ */
+function visibleStored(key: string, store: Store | null): string | null {
+  const stored = readStored(key, store);
+  if (stored === null) return null;
+  if (clearedInTab.get(key) === stored) return null;
+  return parsePendingDeposit(stored) ? stored : null;
+}
+
 /** The raw record for `useSyncExternalStore`: the string itself, so an unchanged record is the same snapshot. */
 export function readPendingDepositRaw(walletAddress: string, store = defaultStore()): string | null {
   const key = pendingDepositKey(walletAddress);
-  return readStored(key, store) ?? memory.get(key) ?? null;
+  return visibleStored(key, store) ?? memory.get(key) ?? null;
+}
+
+/** True when this tab cleared the record but storage still holds it: a reload or another tab shows it again. */
+export function pendingDepositStuck(walletAddress: string, store = defaultStore()): boolean {
+  const key = pendingDepositKey(walletAddress);
+  const stored = readStored(key, store);
+  return stored !== null && clearedInTab.get(key) === stored;
 }
 
 /** Where the current record lives, or null without one. `memory` means a reload loses it. */
 export function pendingDepositHome(walletAddress: string, store = defaultStore()): PendingDepositHome | null {
   const key = pendingDepositKey(walletAddress);
-  if (readStored(key, store)) return "storage";
+  if (visibleStored(key, store)) return "storage";
   return memory.has(key) ? "memory" : null;
 }
 
@@ -139,9 +174,14 @@ export function subscribePendingDeposit(onChange: () => void): () => void {
 /**
  * What the user sees at each step of the SDK's deposit. `eta` is the SDK's
  * own estimate for the step (formatCctpEta), never a number typed here: the
- * route decides how long attestation takes.
+ * route decides how long attestation takes. `home` is where the burn hash was
+ * remembered: the page may be closed only when storage has it.
  */
-export function depositStepLabel(step: string, eta: string | null): string {
+export function depositStepLabel(step: string, eta: string | null, home: PendingDepositHome | null = "storage"): string {
+  const leave =
+    home === "memory"
+      ? "Keep this tab open: this browser wouldn't save the record."
+      : "You can close this page: the USDC arrives on its own.";
   switch (step) {
     case "quoting":
       return "Getting Circle's quote…";
@@ -154,7 +194,7 @@ export function depositStepLabel(step: string, eta: string | null): string {
     case "registering":
       return "Sent on Base. Registering it with Chipi…";
     case "attesting":
-      return `Circle is attesting the transfer (${eta ?? "a while"}). You can close this page: the USDC arrives on its own.`;
+      return `Circle is attesting the transfer (${eta ?? "a while"}). ${leave}`;
     case "minting":
       return `Minting on Starknet (${eta ?? "a while"})…`;
     case "recording":
